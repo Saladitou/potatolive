@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PotatoLive — En Directo</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    :root {
+      --bg: #0b0c10;
+      --card: #12141c;
+      --card-inner: #1a1d28;
+      --accent: #ff4757;
+      --green: #2ed573;
+      --text: #ffffff;
+      --text-muted: #8e95a5;
+      --border: #232736;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 20px 15px; min-height: 100vh; }
+    
+    header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+    .logo { font-size: 28px; background: var(--card-inner); padding: 6px 12px; border-radius: 14px; border: 1px solid var(--border); }
+    h1 { font-size: 24px; font-weight: 800; }
+    h1 span { color: var(--accent); }
+
+    .card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 20px; width: 100%; max-width: 440px; margin-bottom: 15px; }
+    
+    input { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: white; margin-bottom: 12px; font-size: 14px; }
+    
+    button { width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+    .btn-red { background: var(--accent); color: white; }
+    .btn-green { background: var(--green); color: #000; }
+    .btn-dark { background: var(--card-inner); color: white; border: 1px solid var(--border); margin-top: 10px; }
+
+    .stream-item { display: flex; justify-content: space-between; align-items: center; background: var(--card-inner); padding: 12px; border-radius: 12px; border: 1px solid var(--border); margin-top: 8px; }
+    .stream-name { font-weight: bold; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+    .live-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; }
+
+    .video-wrapper { position: relative; width: 100%; aspect-ratio: 9/16; background: #000; border-radius: 16px; overflow: hidden; margin-top: 10px; }
+    video { width: 100%; height: 100%; object-fit: cover; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">🥔</div>
+    <h1>Potato<span>Live</span></h1>
+  </header>
+
+  <!-- Panel Principal -->
+  <div id="screen-setup" class="card">
+    <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">Tu nombre de usuario:</label>
+    <input type="text" id="username" placeholder="Ej: Carlos" value="Usuario">
+
+    <button id="btn-broadcast" class="btn-red">📹 Transmitir mi Cámara</button>
+
+    <div style="margin-top: 25px;">
+      <h3 style="font-size: 15px; margin-bottom: 8px;">🔴 Directos Activos:</h3>
+      <div id="stream-list">
+        <p style="font-size: 13px; color: var(--text-muted);">Buscando transmisiones...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pantalla de Transmisión (Streamer) -->
+  <div id="screen-streamer" class="card hidden">
+    <h3>🔴 Estás transmitiendo</h3>
+    <div class="video-wrapper">
+      <video id="local-video" autoplay playsinline muted></video>
+    </div>
+    <button onclick="location.reload()" class="btn-dark">✕ Finalizar Directo</button>
+  </div>
+
+  <!-- Pantalla de Espectador -->
+  <div id="screen-viewer" class="card hidden">
+    <h3 id="viewer-title">👀 Viendo directo</h3>
+    <div class="video-wrapper">
+      <video id="remote-video" autoplay playsinline></video>
+    </div>
+    <button onclick="location.reload()" class="btn-dark">✕ Salir del Directo</button>
+  </div>
+
+  <script>
+    const socket = io();
+    let localStream, peerConnection;
+    const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+    // Actualizar lista de directos automática
+    socket.on('update-stream-list', (streams) => {
+      const list = document.getElementById('stream-list');
+      list.innerHTML = '';
+
+      if (streams.length === 0) {
+        list.innerHTML = '<p style="font-size: 13px; color: var(--text-muted);">No hay nadie transmitiendo ahora mismo.</p>';
+        return;
+      }
+
+      streams.forEach(s => {
+        if (s.id === socket.id) return; // No mostrarse a uno mismo
+        const div = document.createElement('div');
+        div.className = 'stream-item';
+        div.innerHTML = `
+          <div class="stream-name"><div class="live-dot"></div> ${s.username}</div>
+          <button class="btn-green" style="width: auto; padding: 6px 12px;" onclick="watchStream('${s.id}', '${s.username}')">VER</button>
+        `;
+        list.appendChild(div);
+      });
+    });
+
+    // Iniciar Transmisión
+    document.getElementById('btn-broadcast').onclick = async () => {
+      const name = document.getElementById('username').value || 'Anónimo';
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('local-video').srcObject = localStream;
+
+        document.getElementById('screen-setup').classList.add('hidden');
+        document.getElementById('screen-streamer').classList.remove('hidden');
+
+        socket.emit('start-stream', { username: name });
+      } catch (e) {
+        alert('Error al acceder a la cámara/micrófono: ' + e.message);
+      }
+    };
+
+    // Ver un directo (Espectador)
+    async function watchStream(targetId, username) {
+      document.getElementById('screen-setup').classList.add('hidden');
+      document.getElementById('screen-viewer').classList.remove('hidden');
+      document.getElementById('viewer-title').innerText = `👀 Viendo a ${username}`;
+
+      peerConnection = createPeerConnection(targetId);
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      socket.emit('signal', { to: targetId, signal: peerConnection.localDescription });
+    }
+
+    // Manejo automático de señales WebRTC de fondo
+    socket.on('signal', async (data) => {
+      if (!peerConnection) {
+        peerConnection = createPeerConnection(data.from);
+      }
+
+      if (data.signal.type === 'offer') {
+        peerConnection.addStream(localStream);
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        socket.emit('signal', { to: data.from, signal: peerConnection.localDescription });
+      } else if (data.signal.type === 'answer') {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
+      } else if (data.signal.candidate) {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(data.signal));
+      }
+    });
+
+    function createPeerConnection(targetId) {
+      const pc = new RTCPeerConnection(config);
+      pc.onicecandidate = e => {
+        if (e.candidate) socket.emit('signal', { to: targetId, signal: { candidate: e.candidate } });
+      };
+      pc.ontrack = e => {
+        document.getElementById('remote-video').srcObject = e.streams[0];
+      };
+      return pc;
+    }
+  </script>
+</body>
+</html>
