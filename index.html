@@ -3,64 +3,55 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PotatoLive — V3 Pro</title>
+  <title>PotatoLive — V4 Chat & Pro</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    :root {
-      --bg: #0b0c10; --card: #12141c; --card-inner: #1a1d28;
-      --accent: #ff4757; --green: #2ed573; --text: #ffffff;
-      --text-muted: #8e95a5; --border: #232736;
-    }
+    :root { --bg: #0b0c10; --card: #12141c; --card-inner: #1a1d28; --accent: #ff4757; --green: #2ed573; --text: #ffffff; --text-muted: #8e95a5; --border: #232736; }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
     body { background-color: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 15px; min-height: 100vh; }
-    
     header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
     .logo { font-size: 28px; background: var(--card-inner); padding: 6px 12px; border-radius: 14px; border: 1px solid var(--border); }
     h1 { font-size: 24px; font-weight: 800; } h1 span { color: var(--accent); }
-
     .card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 20px; width: 100%; max-width: 480px; margin-bottom: 15px; position: relative; }
-    
     .input-group { display: flex; gap: 8px; margin-bottom: 12px; }
     input, select { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: white; font-size: 14px; }
-    
     button { padding: 12px; border-radius: 10px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s; }
-    .btn-red { background: var(--accent); color: white; width: 100%; }
-    .btn-green { background: var(--green); color: #000; width: 100%; }
-    .btn-dark { background: var(--card-inner); color: white; border: 1px solid var(--border); width: 100%; margin-top: 10px; }
-    .btn-icon { background: var(--card-inner); color: white; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
-
+    .btn-red { background: var(--accent); color: white; width: 100%; } .btn-green { background: var(--green); color: #000; width: 100%; } .btn-dark { background: var(--card-inner); color: white; border: 1px solid var(--border); width: 100%; margin-top: 10px; } .btn-icon { background: var(--card-inner); color: white; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
     .filters { display: flex; gap: 8px; margin-bottom: 15px; }
-
     .stream-item { background: var(--card-inner); padding: 12px; border-radius: 12px; border: 1px solid var(--border); margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
     .stream-header { display: flex; justify-content: space-between; align-items: center; }
-    .stream-info { font-size: 12px; color: var(--text-muted); display: flex; gap: 10px; }
-    .badge { background: #232736; padding: 3px 8px; border-radius: 6px; color: white; }
-
-    /* Contenedor de Vídeo */
+    .stream-info { font-size: 12px; color: var(--text-muted); display: flex; gap: 10px; } .badge { background: #232736; padding: 3px 8px; border-radius: 6px; color: white; }
+    
     .video-wrapper { position: relative; width: 100%; aspect-ratio: 9/16; background: #050505; border-radius: 16px; overflow: hidden; margin-top: 10px; border: 2px solid var(--border); display: flex; justify-content: center; align-items: center; }
     .video-wrapper.horizontal { aspect-ratio: 16/9; }
     video { width: 100%; height: 100%; object-fit: contain; background: #000; }
-    
     .hidden { display: none !important; }
-
-    /* Controles */
+    
     .controls-bar { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: rgba(0,0,0,0.7); padding: 8px 14px; border-radius: 30px; backdrop-filter: blur(8px); z-index: 20; border: 1px solid rgba(255,255,255,0.1); }
     .controls-bar button { width: 42px; height: 42px; border-radius: 50%; font-size: 18px; padding: 0; }
     .controls-bar button.off { background: var(--accent); color: white; }
-
-    /* UI Compartir Pantalla PIP */
     #pip-controls { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); padding: 6px 12px; border-radius: 12px; display: flex; gap: 8px; z-index: 30; border: 1px solid var(--border); }
     #pip-controls button { width: 34px; height: 34px; border-radius: 8px; }
-
-    /* Modales de Configuración */
+    
     .settings-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 50; border-radius: 18px; }
     .settings-content { background: var(--card-inner); padding: 20px; border-radius: 16px; width: 90%; max-width: 320px; border: 1px solid var(--border); }
-    
     .status-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
     .live-stats { font-size: 13px; color: var(--text-muted); font-weight: bold; }
     .cam-off-msg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 15; text-align: center; padding: 20px; }
     .loader { width: 30px; height: 30px; border: 3px solid var(--border); border-top: 3px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; position: absolute; z-index: 10;}
     @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    /* CHAT CSS */
+    .chat-container { width: 100%; max-width: 480px; height: 280px; background: var(--card-inner); border-radius: 16px; border: 1px solid var(--border); margin-top: 15px; display: flex; flex-direction: column; overflow: hidden; }
+    .chat-messages { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+    .chat-msg { background: var(--bg); padding: 8px 12px; border-radius: 10px; word-wrap: break-word; }
+    .chat-msg strong { color: var(--accent); }
+    .streamer-msg { cursor: pointer; border-left: 2px solid transparent; } .streamer-msg:hover { border-left: 2px solid var(--accent); }
+    .pinned-message { background: rgba(46, 213, 115, 0.15); border-bottom: 1px solid var(--green); padding: 10px; font-size: 12px; display: flex; gap: 8px; align-items: center; }
+    .chat-input-area { background: var(--card); padding: 10px; border-top: 1px solid var(--border); }
+    .emoji-bar { display: flex; gap: 12px; margin-bottom: 8px; font-size: 20px; cursor: pointer; justify-content: center; }
+    .chat-input-row { display: flex; gap: 8px; }
+    .chat-input-row input { margin: 0; }
   </style>
 </head>
 <body>
@@ -70,30 +61,19 @@
     <h1>Potato<span>Live</span></h1>
   </header>
 
-  <!-- PANEL PRINCIPAL (SETUP) -->
+  <!-- SETUP -->
   <div id="screen-setup" class="card">
     <div class="input-group">
       <input type="text" id="username" placeholder="Tu nombre..." value="Pato">
-      <button class="btn-icon" id="btn-random-name" title="Nombre aleatorio" style="width: 50px;">🎲</button>
+      <button class="btn-icon" id="btn-random-name" style="width: 50px;">🎲</button>
     </div>
-    
     <div class="input-group">
-      <select id="category">
-        <option value="Charlando">Charlando</option><option value="Gaming">Gaming</option>
-        <option value="IRL">IRL</option><option value="Música">Música</option>
-        <option value="Tecnología">Tecnología</option><option value="Otros">Otros</option>
-      </select>
-      <select id="format">
-        <option value="vertical">📱 Vertical</option>
-        <option value="horizontal">💻 Horizontal</option>
-      </select>
+      <select id="category"><option>Charlando</option><option>Gaming</option><option>IRL</option><option>Música</option><option>Tecnología</option><option>Otros</option></select>
+      <select id="format"><option value="vertical">📱 Vertical</option><option value="horizontal">💻 Horizontal</option></select>
     </div>
     <select id="quality" style="margin-bottom: 15px;">
-      <option value="720">Calidad: 720p (Recomendado)</option>
-      <option value="1080">Calidad: 1080p (Alta)</option>
-      <option value="480">Calidad: 480p (Fluido)</option>
+      <option value="720">Calidad Max: 720p</option><option value="1080">Calidad Max: 1080p</option><option value="480">Calidad Max: 480p</option>
     </select>
-
     <button id="btn-broadcast" class="btn-red">📹 Iniciar Directo</button>
 
     <div style="margin-top: 30px;">
@@ -101,32 +81,25 @@
       <div class="filters">
         <input type="text" id="search-bar" placeholder="Buscar canal..." onkeyup="renderStreamList()">
         <select id="sort-select" onchange="renderStreamList()" style="width: 140px;">
-          <option value="viewers">🔥 Top Viewers</option>
-          <option value="recent">🕒 Recientes</option>
-          <option value="alpha">A-Z Alfabético</option>
+          <option value="viewers">🔥 Top Viewers</option><option value="recent">🕒 Recientes</option><option value="alpha">A-Z</option>
         </select>
       </div>
       <div id="stream-list"><p style="font-size: 13px; color: var(--text-muted);">Buscando transmisiones...</p></div>
     </div>
   </div>
 
-  <!-- PANTALLA STREAMER -->
-  <div id="screen-streamer" class="card hidden">
+  <!-- STREAMER -->
+  <div id="screen-streamer" class="card hidden" style="margin-bottom: 0;">
     <div class="status-bar">
       <h3>🔴 En Directo</h3>
       <div class="live-stats" id="streamer-stats">⏱️ 00:00 | 👁️ 0</div>
     </div>
     <div class="video-wrapper" id="streamer-wrapper">
-      
-      <!-- Controles PIP al compartir pantalla -->
       <div id="pip-controls" class="hidden">
-        <button class="btn-icon" onclick="changePip('top-left')">↖️</button>
-        <button class="btn-icon" onclick="changePip('top-right')">↗️</button>
-        <button class="btn-icon" onclick="changePip('bottom-left')">↙️</button>
-        <button class="btn-icon" onclick="changePip('bottom-right')">↘️</button>
+        <button class="btn-icon" onclick="changePip('top-left')">↖️</button><button class="btn-icon" onclick="changePip('top-right')">↗️</button>
+        <button class="btn-icon" onclick="changePip('bottom-left')">↙️</button><button class="btn-icon" onclick="changePip('bottom-right')">↘️</button>
         <button class="btn-icon" onclick="changePip('hidden')" style="color: var(--accent);">❌</button>
       </div>
-
       <video id="local-video" autoplay playsinline muted></video>
       <div class="controls-bar">
         <button id="ctrl-mic" class="btn-icon">🎤</button>
@@ -135,28 +108,25 @@
         <button id="ctrl-flip" class="btn-icon">🔄</button>
         <button id="btn-settings-streamer" class="btn-icon">⚙️</button>
       </div>
-
       <!-- Ajustes Streamer -->
       <div id="modal-streamer" class="settings-modal hidden">
         <div class="settings-content">
-          <h4 style="margin-bottom: 15px;">⚙️ Ajustes en Directo</h4>
-          <label style="font-size: 12px; color: var(--text-muted);">Micrófono:</label>
-          <select id="mic-select" style="margin-top: 5px; margin-bottom: 15px;"></select>
-          <label style="font-size: 12px; color: var(--text-muted);">Resolución Máxima:</label>
-          <select id="quality-select" style="margin-top: 5px; margin-bottom: 20px;">
-            <option value="480">Fluido (480p)</option>
-            <option value="720">Normal (720p)</option>
-            <option value="1080">Alta (1080p)</option>
+          <h4>⚙️ Ajustes en Directo</h4>
+          <label style="font-size: 12px; color: var(--text-muted); margin-top:10px;">Micrófono:</label>
+          <select id="mic-select" style="margin-bottom: 10px;"></select>
+          <label style="font-size: 12px; color: var(--text-muted);">Modo Lento (Chat):</label>
+          <select id="slow-mode-select" style="margin-bottom: 10px;">
+            <option value="0">Desactivado</option><option value="5">5 segundos</option><option value="10">10 segundos</option><option value="30">30 segundos</option>
           </select>
-          <button id="close-modal-streamer" class="btn-green">Aplicar Cambios</button>
+          <button id="close-modal-streamer" class="btn-green">Guardar Ajustes</button>
+          <button onclick="location.reload()" style="background:#ff4757; color:white; width:100%; border:none; padding:12px; border-radius:10px; margin-top:20px; font-weight:bold;">🛑 Finalizar Directo</button>
         </div>
       </div>
     </div>
-    <button onclick="location.reload()" class="btn-dark">✕ Finalizar Directo</button>
   </div>
 
-  <!-- PANTALLA ESPECTADOR -->
-  <div id="screen-viewer" class="card hidden">
+  <!-- ESPECTADOR -->
+  <div id="screen-viewer" class="card hidden" style="margin-bottom: 0;">
     <div class="status-bar">
       <h3 id="viewer-title">👀 Viendo directo</h3>
       <div class="live-stats" id="viewer-stats">⏱️ 00:00 | 👁️ 0</div>
@@ -164,63 +134,77 @@
     <div class="video-wrapper" id="viewer-wrapper">
       <div class="loader" id="viewer-loader"></div>
       <div class="cam-off-msg hidden" id="cam-off-overlay">🚫 El streamer ha pausado la cámara</div>
-      
       <video id="remote-video" autoplay playsinline></video>
       <div class="controls-bar">
         <button id="ctrl-fullscreen" class="btn-icon">🔲</button>
         <button id="btn-settings-viewer" class="btn-icon">⚙️</button>
       </div>
-
       <!-- Ajustes Espectador -->
       <div id="modal-viewer" class="settings-modal hidden">
         <div class="settings-content">
-          <h4 style="margin-bottom: 15px;">⚙️ Ajustes de Visualización</h4>
-          <p style="font-size: 11px; color: var(--accent); margin-bottom: 15px; text-align: center;">
-            La calidad gráfica está gestionada automáticamente por el Streamer para la mejor experiencia.
-          </p>
+          <h4>⚙️ Ajustes Individuales</h4>
+          <label style="font-size: 12px; color: var(--text-muted); margin-top:10px;">Calidad de vídeo:</label>
+          <!-- El espectador solo ve hasta 1080, pero el código limitará si el streamer emite a menos -->
+          <select id="viewer-quality-select" style="margin-bottom: 10px;">
+            <option value="720" selected>Auto / Normal (720p)</option>
+            <option value="480">Ahorro de Datos (480p)</option>
+            <option value="1080">Máxima Posible (1080p)</option>
+          </select>
           <label style="font-size: 12px; color: var(--text-muted);">Volumen:</label>
-          <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1" style="width: 100%; margin-top: 10px; margin-bottom: 20px;">
-          <button id="close-modal-viewer" class="btn-green">Cerrar Ajustes</button>
+          <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1" style="width: 100%; margin-bottom: 20px;">
+          <button id="close-modal-viewer" class="btn-green">Aplicar</button>
         </div>
       </div>
     </div>
-    <button onclick="location.reload()" class="btn-dark">✕ Salir del Directo</button>
+  </div>
+
+  <!-- CHAT GLOBAL (Aparece abajo del vídeo al entrar) -->
+  <div id="chat-module" class="chat-container hidden">
+    <div id="pinned-message" class="pinned-message hidden"></div>
+    <div id="chat-messages" class="chat-messages"></div>
+    <div class="chat-input-area">
+      <div class="emoji-bar">
+        <span onclick="addEmoji('😀')">😀</span><span onclick="addEmoji('😂')">😂</span><span onclick="addEmoji('❤️')">❤️</span>
+        <span onclick="addEmoji('🔥')">🔥</span><span onclick="addEmoji('🥔')">🥔</span><span onclick="addEmoji('👀')">👀</span>
+      </div>
+      <div class="chat-input-row">
+        <input type="text" id="chat-input" placeholder="Enviar mensaje...">
+        <button class="btn-red" id="btn-send-chat" style="width: 80px; padding: 12px;">Enviar</button>
+      </div>
+    </div>
   </div>
 
   <script>
     const socket = io();
     let localStream, screenStream;
     let peerConnections = {};
-    let currentFacingMode = 'user';
-    let currentStreamsData = [];
-    let streamStartTime = null, targetStreamerId = null;
-
-    // Variables del Mezclador (Compartir pantalla)
-    let isSharingScreen = false;
-    let pipPos = 'bottom-right';
-    let renderLoop;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const rawCamVideo = document.createElement('video');
-    rawCamVideo.muted = true; rawCamVideo.autoplay = true; rawCamVideo.playsInline = true;
-    const rawScreenVideo = document.createElement('video');
-    rawScreenVideo.muted = true; rawScreenVideo.autoplay = true; rawScreenVideo.playsInline = true;
-
+    let currentFacingMode = 'user', currentStreamsData = [];
+    let streamStartTime = null, targetStreamerId = null, myUsername = "";
+    
+    // WebRTC + Mezclador variables
+    let isSharingScreen = false, isStreamer = false, pipPos = 'bottom-right';
+    let renderLoop; const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
+    const rawCamVideo = document.createElement('video'); rawCamVideo.muted = true; rawCamVideo.autoplay = true; rawCamVideo.playsInline = true;
+    const rawScreenVideo = document.createElement('video'); rawScreenVideo.muted = true; rawScreenVideo.autoplay = true; rawScreenVideo.playsInline = true;
+    
+    // Chat variables
+    let slowModeWait = 0, lastMessageTime = 0;
     const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-    // --- GENERADOR NOMBRES & LISTA ---
-    const adj = ["Pro", "Ninja", "Live", "Boss", "Max", "Gamer"];
-    const noun = ["Potato", "Pato", "Gato", "Lobo", "Oso"];
-    document.getElementById('btn-random-name').onclick = () => {
-      document.getElementById('username').value = noun[Math.floor(Math.random()*noun.length)] + adj[Math.floor(Math.random()*adj.length)] + Math.floor(Math.random()*99);
-    };
+    // --- SETUP Y LISTA ---
+    const adj = ["Pro", "Ninja", "Live", "Boss", "Max"]; const noun = ["Potato", "Pato", "Lobo", "Oso"];
+    document.getElementById('btn-random-name').onclick = () => document.getElementById('username').value = noun[Math.floor(Math.random()*noun.length)] + adj[Math.floor(Math.random()*adj.length)] + Math.floor(Math.random()*99);
 
     socket.on('update-stream-list', (streams) => {
       currentStreamsData = streams;
       renderStreamList();
       if (targetStreamerId) {
         const s = streams.find(x => x.id === targetStreamerId);
-        if (s) updateTimeAndStats('viewer-stats', s.startTime, s.viewers);
+        if (s) {
+          document.getElementById('viewer-stats').innerText = `⏱️ ${Math.floor((Date.now() - s.startTime)/60000)}m | 👁️ ${s.viewers}`;
+        } else {
+          alert('El directo ha terminado'); location.reload();
+        }
       }
     });
 
@@ -233,91 +217,63 @@
       if (sort === 'viewers') filtered.sort((a,b) => b.viewers - a.viewers);
       else if (sort === 'recent') filtered.sort((a,b) => b.startTime - a.startTime);
       else if (sort === 'alpha') filtered.sort((a,b) => a.username.localeCompare(b.username));
-
       if (filtered.length === 0) return list.innerHTML = '<p style="font-size: 13px; color: var(--text-muted);">No hay canales activos.</p>';
 
       filtered.forEach(s => {
-        const uptime = Math.floor((Date.now() - s.startTime) / 60000);
         list.innerHTML += `
           <div class="stream-item">
-            <div class="stream-header">
-              <strong>🔴 ${s.username}</strong>
-              <button class="btn-green" style="width: auto; padding: 6px 12px;" onclick="watchStream('${s.id}', '${s.username}')">VER</button>
-            </div>
-            <div class="stream-info">
-              <span class="badge">👁️ ${s.viewers}</span><span class="badge">🏷️ ${s.category}</span><span>⏱️ ${uptime}m</span>
-            </div>
+            <div class="stream-header"><strong>🔴 ${s.username}</strong><button class="btn-green" style="width: auto; padding: 6px 12px;" onclick="watchStream('${s.id}', '${s.username}')">VER</button></div>
+            <div class="stream-info"><span class="badge">👁️ ${s.viewers}</span><span class="badge">🏷️ ${s.category}</span><span>⏱️ ${Math.floor((Date.now() - s.startTime)/60000)}m</span></div>
           </div>`;
       });
     }
 
-    function updateTimeAndStats(elementId, startTime, viewers) {
-      document.getElementById(elementId).innerText = `⏱️ ${Math.floor((Date.now() - startTime) / 60000)}m | 👁️ ${viewers}`;
-    }
-
-    // --- INICIAR STREAMER ---
+    // --- STREAMER ---
     document.getElementById('btn-broadcast').onclick = async () => {
-      let name = document.getElementById('username').value || 'Anónimo';
-      if (currentStreamsData.find(s => s.username.toLowerCase() === name.toLowerCase())) {
-        name = name + Math.floor(Math.random() * 1000);
-        alert(`Ese nombre ya existe. Se te asignó: ${name}`);
-        document.getElementById('username').value = name;
+      myUsername = document.getElementById('username').value || 'Anónimo';
+      if (currentStreamsData.find(s => s.username.toLowerCase() === myUsername.toLowerCase())) {
+        myUsername += Math.floor(Math.random() * 1000);
+        document.getElementById('username').value = myUsername;
       }
       
-      document.getElementById('quality-select').value = document.getElementById('quality').value; // Sincroniza menú interno
       const format = document.getElementById('format').value;
       if (format === 'horizontal') document.getElementById('streamer-wrapper').classList.add('horizontal');
-
+      
       await startMedia(currentFacingMode, document.getElementById('quality').value);
       
       document.getElementById('screen-setup').classList.add('hidden');
       document.getElementById('screen-streamer').classList.remove('hidden');
+      document.getElementById('chat-module').classList.remove('hidden');
       
-      streamStartTime = Date.now();
+      isStreamer = true; targetStreamerId = socket.id; streamStartTime = Date.now();
       setInterval(() => {
         const viewers = Object.keys(peerConnections).length;
         socket.emit('update-viewers', viewers);
-        updateTimeAndStats('streamer-stats', streamStartTime, viewers);
+        document.getElementById('streamer-stats').innerText = `⏱️ ${Math.floor((Date.now() - streamStartTime)/60000)}m | 👁️ ${viewers}`;
       }, 5000);
-      socket.emit('start-stream', { username: name, category: document.getElementById('category').value, format: format });
+      socket.emit('start-stream', { username: myUsername, category: document.getElementById('category').value, format: format });
     };
 
-    // --- GESTIÓN CÁMARA & MICRÓFONO ---
     async function startMedia(facingMode, res, audioDeviceId = null) {
       if (localStream) localStream.getTracks().forEach(t => t.stop());
       try {
-        const constraints = { 
+        localStream = await navigator.mediaDevices.getUserMedia({ 
           video: { facingMode: facingMode, height: { ideal: parseInt(res) }, frameRate: { ideal: 24, max: 30 } }, 
-          audio: audioDeviceId ? { deviceId: { exact: audioDeviceId }, echoCancellation: true, noiseSuppression: true } : { echoCancellation: true, noiseSuppression: true }
-        };
-        localStream = await navigator.mediaDevices.getUserMedia(constraints);
-        
-        rawCamVideo.srcObject = localStream; // Se guarda para el Canvas
+          audio: audioDeviceId ? { deviceId: { exact: audioDeviceId }, echoCancellation: true } : { echoCancellation: true }
+        });
+        rawCamVideo.srcObject = localStream;
         const videoTrack = isSharingScreen ? canvas.captureStream(30).getVideoTracks()[0] : localStream.getVideoTracks()[0];
-        
         if (!isSharingScreen) document.getElementById('local-video').srcObject = localStream;
         
-        // Sincronizar botones si estaban muteados
-        const btnMic = document.getElementById('ctrl-mic').classList.contains('off');
-        const btnCam = document.getElementById('ctrl-cam').classList.contains('off');
-        if (btnMic) localStream.getAudioTracks()[0].enabled = false;
-        if (btnCam) localStream.getVideoTracks()[0].enabled = false;
-
-        updatePeersTracks(videoTrack, localStream.getAudioTracks()[0]);
-      } catch (e) { alert('Error cámara/micro: ' + e.message); }
-    }
-
-    function updatePeersTracks(videoTrack, audioTrack) {
-      Object.values(peerConnections).forEach(pc => {
-        if (videoTrack) {
-          const vSender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
-          if (vSender) vSender.replaceTrack(videoTrack);
-        }
-        if (audioTrack) {
-          const aSender = pc.getSenders().find(s => s.track && s.track.kind === 'audio');
-          if (aSender) aSender.replaceTrack(audioTrack);
-        }
-      });
+        // Restaurar estado de mute
+        if (document.getElementById('ctrl-mic').classList.contains('off')) localStream.getAudioTracks()[0].enabled = false;
+        if (document.getElementById('ctrl-cam').classList.contains('off')) localStream.getVideoTracks()[0].enabled = false;
+        
+        Object.values(peerConnections).forEach(pc => {
+          const vS = pc.getSenders().find(s => s.track && s.track.kind === 'video'); if (vS) vS.replaceTrack(videoTrack);
+          const aS = pc.getSenders().find(s => s.track && s.track.kind === 'audio'); if (aS) aS.replaceTrack(localStream.getAudioTracks()[0]);
+        });
+      } catch (e) { alert('Error cámara: ' + e.message); }
     }
 
     document.getElementById('ctrl-mic').onclick = (e) => {
@@ -330,114 +286,93 @@
       if (t) { 
         t.enabled = !t.enabled; 
         e.currentTarget.classList.toggle('off', !t.enabled); 
-        socket.emit('camera-status', { enabled: t.enabled });
+        // FIX: Si está compartiendo pantalla NO avisa que se cortó la cámara principal
+        socket.emit('camera-status', { enabled: t.enabled || isSharingScreen });
       }
     };
     
     document.getElementById('ctrl-flip').onclick = () => {
       currentFacingMode = (currentFacingMode === 'user' ? 'environment' : 'user');
-      startMedia(currentFacingMode, document.getElementById('quality-select').value);
+      startMedia(currentFacingMode, document.getElementById('quality').value);
     };
 
-    // --- COMPARTIR PANTALLA + CANVAS MEZCLADOR ---
+    // --- COMPARTIR PANTALLA ---
     function changePip(pos) { pipPos = pos; }
-
     function startCanvasMixer(format, heightRes) {
       canvas.width = format === 'horizontal' ? Math.round(heightRes * (16/9)) : Math.round(heightRes * (9/16));
       canvas.height = heightRes;
-
       function render() {
         if (!isSharingScreen) return;
-        
-        ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, canvas.width, canvas.height); // Fondo
-        
-        // Dibuja Pantalla
+        ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         if (rawScreenVideo.readyState >= 2) {
           const sRatio = rawScreenVideo.videoWidth / rawScreenVideo.videoHeight;
           const cRatio = canvas.width / canvas.height;
           let drawW = canvas.width, drawH = canvas.height, dx = 0, dy = 0;
-          if (sRatio > cRatio) { drawH = canvas.width / sRatio; dy = (canvas.height - drawH) / 2; } 
-          else { drawW = canvas.height * sRatio; dx = (canvas.width - drawW) / 2; }
+          if (sRatio > cRatio) { drawH = canvas.width / sRatio; dy = (canvas.height - drawH) / 2; } else { drawW = canvas.height * sRatio; dx = (canvas.width - drawW) / 2; }
           ctx.drawImage(rawScreenVideo, dx, dy, drawW, drawH);
         }
-        
-        // Dibuja Cámara (Solo si no está oculta y no está muteada)
         if (pipPos !== 'hidden' && rawCamVideo.readyState >= 2 && localStream.getVideoTracks()[0].enabled) {
-          const pipW = canvas.width * 0.28;
-          const pipH = pipW * (rawCamVideo.videoHeight / rawCamVideo.videoWidth);
+          const pipW = canvas.width * 0.28; const pipH = pipW * (rawCamVideo.videoHeight / rawCamVideo.videoWidth);
           let x = 15, y = 15;
           if (pipPos.includes('right')) x = canvas.width - pipW - 15;
           if (pipPos.includes('bottom')) y = canvas.height - pipH - 15;
-          ctx.drawImage(rawCamVideo, x, y, pipW, pipH);
-          ctx.strokeStyle = '#ff4757'; ctx.lineWidth = 3; ctx.strokeRect(x, y, pipW, pipH);
+          ctx.drawImage(rawCamVideo, x, y, pipW, pipH); ctx.strokeStyle = '#ff4757'; ctx.lineWidth = 3; ctx.strokeRect(x, y, pipW, pipH);
         }
         renderLoop = requestAnimationFrame(render);
       }
-      render();
-      return canvas.captureStream(30).getVideoTracks()[0];
+      render(); return canvas.captureStream(30).getVideoTracks()[0];
     }
 
     document.getElementById('ctrl-screen').onclick = async () => {
-      if (isSharingScreen) { stopScreenShare(); return; }
-      try {
-        screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        rawScreenVideo.srcObject = screenStream;
-        isSharingScreen = true;
-        
-        document.getElementById('ctrl-screen').classList.add('off');
-        document.getElementById('pip-controls').classList.remove('hidden');
-
-        const mixedVideoTrack = startCanvasMixer(document.getElementById('format').value, parseInt(document.getElementById('quality-select').value));
-        
-        document.getElementById('local-video').srcObject = canvas.captureStream(30);
-        updatePeersTracks(mixedVideoTrack, null);
-
-        screenStream.getVideoTracks()[0].onended = () => stopScreenShare();
-      } catch(e) {}
+      if (isSharingScreen) {
+        isSharingScreen = false; cancelAnimationFrame(renderLoop);
+        if (screenStream) screenStream.getTracks().forEach(t => t.stop());
+        document.getElementById('ctrl-screen').classList.remove('off');
+        document.getElementById('pip-controls').classList.add('hidden');
+        document.getElementById('local-video').srcObject = localStream;
+        Object.values(peerConnections).forEach(pc => { const vS = pc.getSenders().find(s => s.track && s.track.kind === 'video'); if (vS) vS.replaceTrack(localStream.getVideoTracks()[0]); });
+        // Emitir estado real de la cámara al quitar pantalla
+        socket.emit('camera-status', { enabled: localStream.getVideoTracks()[0].enabled });
+      } else {
+        try {
+          screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+          rawScreenVideo.srcObject = screenStream; isSharingScreen = true;
+          document.getElementById('ctrl-screen').classList.add('off'); document.getElementById('pip-controls').classList.remove('hidden');
+          const mixedTrack = startCanvasMixer(document.getElementById('format').value, parseInt(document.getElementById('quality').value));
+          document.getElementById('local-video').srcObject = canvas.captureStream(30);
+          Object.values(peerConnections).forEach(pc => { const vS = pc.getSenders().find(s => s.track && s.track.kind === 'video'); if (vS) vS.replaceTrack(mixedTrack); });
+          socket.emit('camera-status', { enabled: true }); // Al compartir pantalla forzamos activo
+          screenStream.getVideoTracks()[0].onended = () => document.getElementById('ctrl-screen').click();
+        } catch(e) {}
+      }
     };
 
-    function stopScreenShare() {
-      isSharingScreen = false;
-      cancelAnimationFrame(renderLoop);
-      if (screenStream) screenStream.getTracks().forEach(t => t.stop());
-      document.getElementById('ctrl-screen').classList.remove('off');
-      document.getElementById('pip-controls').classList.add('hidden');
-      document.getElementById('local-video').srcObject = localStream;
-      if(localStream) updatePeersTracks(localStream.getVideoTracks()[0], null);
-    }
-
-    // --- MODAL AJUSTES STREAMER ---
+    // --- AJUSTES STREAMER ---
     document.getElementById('btn-settings-streamer').onclick = async () => {
       document.getElementById('modal-streamer').classList.remove('hidden');
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const sel = document.getElementById('mic-select'); const current = sel.value;
-      sel.innerHTML = '';
-      devices.filter(d => d.kind === 'audioinput').forEach((d, i) => {
-        sel.innerHTML += `<option value="${d.deviceId}">${d.label || 'Micro '+(i+1)}</option>`;
-      });
-      if(current) sel.value = current;
+      const sel = document.getElementById('mic-select'); sel.innerHTML = '';
+      devices.filter(d => d.kind === 'audioinput').forEach((d, i) => { sel.innerHTML += `<option value="${d.deviceId}">${d.label || 'Micro '+(i+1)}</option>`; });
     };
-    
-    document.getElementById('close-modal-streamer').onclick = async () => {
+    document.getElementById('close-modal-streamer').onclick = () => {
       document.getElementById('modal-streamer').classList.add('hidden');
-      await startMedia(currentFacingMode, document.getElementById('quality-select').value, document.getElementById('mic-select').value);
-      if(isSharingScreen) {
-        const res = parseInt(document.getElementById('quality-select').value);
-        const format = document.getElementById('format').value;
-        canvas.width = format === 'horizontal' ? Math.round(res * (16/9)) : Math.round(res * (9/16));
-        canvas.height = res;
-      }
+      socket.emit('set-slow-mode', { seconds: parseInt(document.getElementById('slow-mode-select').value) });
+      startMedia(currentFacingMode, document.getElementById('quality').value, document.getElementById('mic-select').value);
     };
 
     // --- ESPECTADOR ---
     function watchStream(targetId, username) {
+      myUsername = document.getElementById('username').value || 'Espectador' + Math.floor(Math.random()*999);
       document.getElementById('screen-setup').classList.add('hidden');
       document.getElementById('screen-viewer').classList.remove('hidden');
+      document.getElementById('chat-module').classList.remove('hidden');
       document.getElementById('viewer-title').innerText = `👀 Viendo a ${username}`;
       targetStreamerId = targetId;
 
       const streamData = currentStreamsData.find(s => s.id === targetId);
       if (streamData && streamData.format === 'horizontal') document.getElementById('viewer-wrapper').classList.add('horizontal');
+      
+      socket.emit('join-stream', targetId);
       socket.emit('signal', { to: targetId, signal: { type: 'viewer-ready' } });
     }
 
@@ -445,12 +380,15 @@
       const wr = document.getElementById('viewer-wrapper');
       if (wr.requestFullscreen) wr.requestFullscreen(); else if (wr.webkitRequestFullscreen) wr.webkitRequestFullscreen();
     };
-
     document.getElementById('remote-video').onplaying = () => document.getElementById('viewer-loader').style.display = 'none';
 
-    // Ajustes Espectador
+    // Ajustes Espectador (Calidad Individual WebRTC)
     document.getElementById('btn-settings-viewer').onclick = () => document.getElementById('modal-viewer').classList.remove('hidden');
-    document.getElementById('close-modal-viewer').onclick = () => document.getElementById('modal-viewer').classList.add('hidden');
+    document.getElementById('close-modal-viewer').onclick = () => {
+      document.getElementById('modal-viewer').classList.add('hidden');
+      // Enviar señal al streamer para que degrade solo MI señal
+      socket.emit('signal', { to: targetStreamerId, signal: { type: 'set-peer-quality', res: parseInt(document.getElementById('viewer-quality-select').value) } });
+    };
     document.getElementById('volume-slider').oninput = (e) => document.getElementById('remote-video').volume = e.target.value;
 
     socket.on('peer-camera-status', (data) => {
@@ -460,7 +398,40 @@
       }
     });
 
-    // --- NÚCLEO WEBRTC ---
+    // --- CHAT SYSTEM ---
+    function addEmoji(e) { document.getElementById('chat-input').value += e; }
+    
+    document.getElementById('btn-send-chat').onclick = () => {
+      const text = document.getElementById('chat-input').value.trim();
+      if (!text) return;
+      if (!isStreamer && slowModeWait > 0 && Date.now() - lastMessageTime < slowModeWait * 1000) {
+        alert(`Modo lento activado. Espera ${slowModeWait} segundos.`); return;
+      }
+      lastMessageTime = Date.now();
+      socket.emit('chat-message', { streamerId: targetStreamerId, username: myUsername, text: text });
+      document.getElementById('chat-input').value = '';
+    };
+
+    socket.on('chat-message', (data) => {
+      const box = document.getElementById('chat-messages');
+      const msg = document.createElement('div'); msg.className = `chat-msg ${isStreamer ? 'streamer-msg' : ''}`;
+      msg.innerHTML = `<strong>${data.username}:</strong> ${data.text}`;
+      if (isStreamer) {
+        msg.title = "Clic para fijar";
+        msg.onclick = () => { if(confirm('¿Fijar este mensaje?')) socket.emit('pin-message', { streamerId: targetStreamerId, username: data.username, text: data.text }); };
+      }
+      box.appendChild(msg); box.scrollTop = box.scrollHeight;
+    });
+
+    socket.on('pin-message', (data) => {
+      const pin = document.getElementById('pinned-message');
+      pin.innerHTML = `📌 <strong>${data.username}:</strong> ${data.text}`;
+      pin.classList.remove('hidden');
+    });
+
+    socket.on('slow-mode-changed', (sec) => { slowModeWait = sec; });
+
+    // --- WEBRTC CORE ---
     socket.on('signal', async (data) => {
       let pc = peerConnections[data.from];
       try {
@@ -468,20 +439,37 @@
           pc = createPeerConnection(data.from);
           const vTrack = isSharingScreen ? canvas.captureStream(30).getVideoTracks()[0] : localStream.getVideoTracks()[0];
           if (localStream) { pc.addTrack(vTrack, localStream); pc.addTrack(localStream.getAudioTracks()[0], localStream); }
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
+          const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
           socket.emit('signal', { to: data.from, signal: { type: 'offer', sdp: offer } });
-        } else if (data.signal.type === 'offer') {
+        } 
+        else if (data.signal.type === 'offer') {
           pc = createPeerConnection(data.from);
           await pc.setRemoteDescription(new RTCSessionDescription(data.signal.sdp));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
+          const answer = await pc.createAnswer(); await pc.setLocalDescription(answer);
           socket.emit('signal', { to: data.from, signal: { type: 'answer', sdp: answer } });
-        } else if (data.signal.type === 'answer') {
+        } 
+        else if (data.signal.type === 'answer') {
           await pc.setRemoteDescription(new RTCSessionDescription(data.signal.sdp));
-        } else if (data.signal.candidate) {
+        } 
+        else if (data.signal.candidate) {
           if (!pc) pc = createPeerConnection(data.from);
           await pc.addIceCandidate(new RTCIceCandidate(data.signal.candidate));
+        }
+        else if (data.signal.type === 'set-peer-quality') {
+          // El streamer recibe la orden de un espectador para bajar SU calidad específica
+          if (pc && pc.getSenders) {
+            const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+            if (sender) {
+              const params = sender.getParameters();
+              if (!params.encodings) params.encodings = [{}];
+              const reqRes = data.signal.res;
+              const currentRes = parseInt(document.getElementById('quality').value);
+              let scale = currentRes / reqRes;
+              if (scale < 1) scale = 1; // Nunca enviar más resolución de la que tiene la cámara origen
+              params.encodings[0].scaleResolutionDownBy = scale;
+              sender.setParameters(params);
+            }
+          }
         }
       } catch (err) {}
     });
