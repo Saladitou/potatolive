@@ -95,11 +95,18 @@
   <script>
     const socket = io();
     let localStream;
-    let peerConnections = {}; // Soporta múltiples conexiones independientes
+    let peerConnections = {};
     let currentFacingMode = 'user';
-    const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-    // Actualizar lista de directos
+    // Lista de servidores STUN públicos de Google para asegurar que el vídeo viaje bien
+    const config = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' }
+      ]
+    };
+
     socket.on('update-stream-list', (streams) => {
       const list = document.getElementById('stream-list');
       list.innerHTML = '';
@@ -121,7 +128,6 @@
       });
     });
 
-    // Iniciar vídeo/audio local
     async function startMedia(facingMode) {
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
@@ -134,8 +140,7 @@
         
         const localVideo = document.getElementById('local-video');
         localVideo.srcObject = localStream;
-        
-        // Actualizar vídeo en conexiones existentes
+
         Object.values(peerConnections).forEach(pc => {
           const videoTrack = localStream.getVideoTracks()[0];
           const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
@@ -147,7 +152,6 @@
       }
     }
 
-    // Botón Transmitir
     document.getElementById('btn-broadcast').onclick = async () => {
       const name = document.getElementById('username').value || 'Anónimo';
       await startMedia(currentFacingMode);
@@ -158,7 +162,6 @@
       socket.emit('start-stream', { username: name });
     };
 
-    // Botones de control
     document.getElementById('ctrl-mic').onclick = () => {
       const track = localStream.getAudioTracks()[0];
       if (track) {
@@ -180,7 +183,6 @@
       await startMedia(currentFacingMode);
     };
 
-    // Conectar como espectador
     async function watchStream(targetId, username) {
       document.getElementById('screen-setup').classList.add('hidden');
       document.getElementById('screen-viewer').classList.remove('hidden');
@@ -192,12 +194,10 @@
       socket.emit('signal', { to: targetId, signal: pc.localDescription });
     }
 
-    // Intercambio WebRTC corregido
     socket.on('signal', async (data) => {
       let pc = peerConnections[data.from] || createPeerConnection(data.from);
 
       if (data.signal.type === 'offer') {
-        // Enviar pistas de audio y vídeo al espectador usando el estándar moderno addTrack
         if (localStream) {
           localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
         }
@@ -228,10 +228,8 @@
 
       pc.ontrack = e => {
         const remoteVideo = document.getElementById('remote-video');
-        if (remoteVideo.srcObject !== e.streams[0]) {
-          remoteVideo.srcObject = e.streams[0];
-          remoteVideo.play().catch(() => {});
-        }
+        remoteVideo.srcObject = e.streams[0];
+        remoteVideo.play().catch(err => console.log("Autoplay prevenido por el navegador", err));
       };
 
       return pc;
