@@ -1,56 +1,56 @@
 const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-
 const app = express();
-const server = http.createServer(app);
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
 
-// AQUÍ ESTÁ LA LÍNEA: Le dice al servidor que entregue el index.html cuando entren
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
-});
+app.use(express.static(__dirname));
 
-const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] }
-});
-
-let activeStreams = {};
+let streams = {}; // Almacena toda la info de los directos
 
 io.on('connection', (socket) => {
-  console.log(`📱 Usuario conectado: ${socket.id}`);
+  // Al conectar, enviamos la lista actual
+  socket.emit('update-stream-list', Object.values(streams));
 
-  // Envia los directos que hay activos en ese momento
-  socket.emit('update-stream-list', Object.values(activeStreams));
-
-  // Cuando alguien empieza a transmitir
+  // Crear un nuevo directo con todos los datos
   socket.on('start-stream', (data) => {
-    activeStreams[socket.id] = {
+    streams[socket.id] = {
       id: socket.id,
-      username: data.username || 'PotatoStreamer'
+      username: data.username,
+      category: data.category,
+      format: data.format,
+      startTime: Date.now(),
+      viewers: 0
     };
-    console.log(`🔴 Directo activo de: ${data.username}`);
-    io.emit('update-stream-list', Object.values(activeStreams));
+    io.emit('update-stream-list', Object.values(streams));
   });
 
-  // Conexión automática por detrás
+  // El streamer avisa de cuántos espectadores tiene conectados
+  socket.on('update-viewers', (count) => {
+    if (streams[socket.id]) {
+      streams[socket.id].viewers = count;
+      io.emit('update-stream-list', Object.values(streams));
+    }
+  });
+
+  // Avisar a los espectadores si el streamer apaga la cámara
+  socket.on('camera-status', (data) => {
+    socket.broadcast.emit('peer-camera-status', { streamerId: socket.id, enabled: data.enabled });
+  });
+
+  // Señales de vídeo WebRTC
   socket.on('signal', (data) => {
-    io.to(data.to).emit('signal', {
-      from: socket.id,
-      signal: data.signal
-    });
+    io.to(data.to).emit('signal', { from: socket.id, signal: data.signal });
   });
 
-  // Cuando se cierra el directo o el móvil se desconecta
+  // Cuando alguien cierra la página
   socket.on('disconnect', () => {
-    if (activeStreams[socket.id]) {
-      console.log(`⏹️ Directo terminado: ${activeStreams[socket.id].username}`);
-      delete activeStreams[socket.id];
-      io.emit('update-stream-list', Object.values(activeStreams));
+    if (streams[socket.id]) {
+      delete streams[socket.id];
+      io.emit('update-stream-list', Object.values(streams));
     }
   });
 });
 
-const PORT = 3000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n🚀 ¡Servidor PotatoLive listo en el puerto ${PORT}!`);
+http.listen(process.env.PORT || 3000, () => {
+  console.log('Servidor V3 activo');
 });
