@@ -1,29 +1,21 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PotatoLive</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    /* VARIABLES (Tema Oscuro / Claro) */
+    /* Tema Oscuro Puro (Por defecto) */
     :root {
       --primary: #0051ff; --primary-hover: #0042d1; --accent: #ef4444; --green: #10b981;
       --bg: #050505; --panel: #0a0a0a; --card: #111111; --text: #ffffff; --text-muted: #888888; --border: #1f1f1f;
       --transition: 0.3s ease;
     }
-    [data-theme="light"] {
-      --bg: #f8fafc; --panel: #ffffff; --card: #f1f5f9; --text: #0f172a; --text-muted: #64748b; --border: #e2e8f0;
-    }
     
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; transition: background-color var(--transition), color var(--transition); }
+    body { background-color: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
     
-    /* ANIMACIÓN CASCADA TEMA */
-    .theme-waterfall { position: fixed; top: -100%; left: 0; width: 100%; height: 100%; background: var(--primary); z-index: 9999; pointer-events: none; }
-    .theme-waterfall.active { animation: fall 1.2s cubic-bezier(0.645, 0.045, 0.355, 1) forwards; }
-    @keyframes fall { 0% { top: -100%; border-bottom-left-radius: 50%; border-bottom-right-radius: 50%; } 40% { top: 0; border-radius: 0; } 60% { top: 0; border-radius: 0; } 100% { top: 100%; border-top-left-radius: 50%; border-top-right-radius: 50%; } }
-
     #maintenance-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: #000; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10000; }
     
     /* UI GENERAL */
@@ -32,7 +24,13 @@
     .btn-danger { background: var(--accent); color: white; }
     .btn-icon { background: transparent; border: none; color: var(--text); padding: 8px; border-radius: 8px; display:flex; align-items:center; justify-content:center; font-size: 20px; }
     .btn-icon:hover { background: var(--border); }
-    input, select, textarea { width: 100%; padding: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; color: var(--text); margin-bottom: 15px; font-size: 14px; }
+    input, select, textarea { width: 100%; padding: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; color: var(--text); margin-bottom: 15px; font-size: 14px; outline: none; }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+
+    /* Estilo exacto para el modal de Ajustes del Espectador */
+    .styled-select { background-color: #111; color: white; border: 1px solid white; border-radius: 8px; }
+    .styled-slider { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 5px; background: #0051ff; outline: none; margin-bottom: 25px; margin-top: 10px; }
+    .styled-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: white; cursor: pointer; }
     
     /* SIDEBAR Y TOPBAR */
     .sidebar { width: 260px; background: var(--bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: var(--transition); position: absolute; height: 100%; z-index: 100; transform: translateX(-100%); }
@@ -78,6 +76,11 @@
     .modal-content { background: var(--panel); padding: 24px; border-radius: 16px; width: 90%; max-width: 420px; border: 1px solid var(--border); }
     .hidden { display: none !important; }
 
+    /* ADMIN TABS & SPLIT VIEW */
+    .admin-layout { display: flex; height: 100%; gap: 20px; }
+    .admin-list { width: 350px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; }
+    .admin-detail { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; }
+
     /* SOPORTE UI */
     .support-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
     .support-tab { flex: 1; text-align: center; padding: 15px; cursor: pointer; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid transparent; }
@@ -119,15 +122,12 @@
     .chat-msg strong { color: var(--primary); }
     .chat-input-area { padding: 10px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
     .chat-input-area input { margin: 0; padding: 10px; }
-    .pinned-message { background: rgba(16, 185, 129, 0.1); border-bottom: 1px solid var(--green); padding: 8px; font-size: 12px; display: flex; align-items: center; }
 
     .action-card { background: var(--card); border: 1px solid var(--border); padding: 12px; border-radius: 8px; }
     .rank-item { display: flex; justify-content: space-between; font-size: 13px; padding: 8px; border-bottom: 1px solid var(--border); }
   </style>
 </head>
 <body>
-
-  <div class="theme-waterfall" id="theme-fx"></div>
 
   <!-- Overlay Mantenimiento -->
   <div id="maintenance-overlay" class="hidden">
@@ -152,9 +152,9 @@
         <button class="btn-icon menu-toggle" onclick="toggleMenu()">≡</button>
         <div class="logo" id="logo-trigger">🥔 Potato<span>Live</span></div>
       </div>
-      <div class="topbar-right">
-        <button class="btn-icon" onclick="toggleTheme()" title="Modo Claro/Oscuro">🌓</button>
-        <button class="btn-icon" onclick="openModalFS('fs-support')" title="Soporte Técnico">💬</button>
+      <!-- Igual que tu foto: sin botón de modo claro/oscuro -->
+      <div class="topbar-right" style="display: flex; gap: 10px; align-items: center;">
+        <svg onclick="openModalFS('fs-support')" style="cursor:pointer; fill:white; width: 24px; height: 24px;" viewBox="0 0 24 24"><path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H5.17L4 17.17V4H20V16Z"/></svg>
         <button class="btn-primary" onclick="openModal('modal-golive')">🔴 Hacer Directo</button>
       </div>
     </header>
@@ -165,7 +165,7 @@
       <div class="streams-grid" id="streams-grid"></div>
     </div>
 
-    <!-- EXPLORAR (Categorías Restablecidas) -->
+    <!-- EXPLORAR -->
     <div id="view-explore" class="view">
       <h2 style="margin-bottom: 20px;">Explorar Categorías</h2>
       <div class="categories-grid">
@@ -205,18 +205,20 @@
             <video id="main-video" autoplay playsinline></video>
             
             <div class="controls-bar">
-              <button id="ctrl-mic" class="btn-icon hidden streamer-only">🎤</button>
-              <button id="ctrl-cam" class="btn-icon hidden streamer-only">📹</button>
-              <button id="ctrl-screen" class="btn-icon hidden streamer-only">💻</button>
-              <button id="ctrl-settings" class="btn-icon hidden streamer-only" onclick="openModal('modal-streamer-settings')">⚙️</button>
+              <!-- CONTROLES STREAMER (Asegurados de que funcionen bien) -->
+              <button id="ctrl-mic" class="btn-icon streamer-only hidden">🎤</button>
+              <button id="ctrl-cam" class="btn-icon streamer-only hidden">📹</button>
+              <button id="ctrl-screen" class="btn-icon streamer-only hidden">💻</button>
+              <button id="ctrl-settings" class="btn-icon streamer-only hidden" onclick="openModal('modal-streamer-settings')">⚙️</button>
               
-              <button id="ctrl-full" class="btn-icon viewer-only" onclick="toggleFull()">🔲</button>
-              <button id="ctrl-viewer-settings" class="btn-icon viewer-only" onclick="openModal('modal-viewer-settings')">⚙️</button>
+              <!-- CONTROLES ESPECTADOR -->
+              <button id="ctrl-full" class="btn-icon viewer-only hidden" onclick="toggleFull()">🔲</button>
+              <button id="ctrl-viewer-settings" class="btn-icon viewer-only hidden" onclick="openModal('modal-viewer-settings')">⚙️</button>
             </div>
           </div>
         </div>
 
-        <!-- PANEL DERECHO (RESTABLECIDO) -->
+        <!-- PANEL DERECHO (CHAT Y PUNTOS) -->
         <div class="side-panel">
           <div class="tabs">
             <div class="tab active" onclick="switchTab('chat')">Chat</div>
@@ -226,7 +228,6 @@
           
           <!-- CHAT -->
           <div id="tab-chat" class="tab-content active">
-            <div id="pinned-message" class="pinned-message hidden"></div>
             <div id="chat-messages" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:5px;"></div>
             <div class="chat-input-area">
               <input type="text" id="chat-input" placeholder="Escribe aquí..." style="margin:0;">
@@ -241,7 +242,7 @@
               <h2 id="my-points" style="color:var(--primary);">0 🪙</h2>
             </div>
             
-            <div id="viewer-actions" class="viewer-only">
+            <div id="viewer-actions" class="viewer-only hidden">
               <div id="active-prediction-ui" class="action-card hidden" style="margin-top:10px;">
                 <p id="pred-q" style="font-weight:bold; margin-bottom:10px;"></p>
                 <div style="display:flex; gap:10px; margin-bottom: 10px;">
@@ -251,7 +252,6 @@
                 <input type="number" id="pred-amount" placeholder="Puntos a apostar" style="margin:0;">
               </div>
               <p id="no-pred-msg" style="font-size:13px; color:var(--text-muted); margin-top:10px;">No hay apuestas activas.</p>
-              
               <h4 style="margin:15px 0 10px; color:var(--primary);">Recompensas</h4>
               <div id="rewards-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
             </div>
@@ -287,7 +287,7 @@
 
   <!-- ================= MODALES FULLSCREEN ================= -->
 
-  <!-- FS MODAL: SOPORTE USUARIO (UI EXACTA A LA FOTO) -->
+  <!-- FS MODAL: SOPORTE USUARIO -->
   <div id="fs-support" class="fs-modal">
     <div class="fs-header">
       <div style="display:flex; align-items:center; gap:10px;">🤖 Soporte Técnico</div>
@@ -302,8 +302,8 @@
       
       <div id="sup-tab-new" style="display:block;">
         <div class="info-box">
-          🕒 <span>¿Cómo funciona nuestro soporte?</span><br><br>
-          Al enviar tu consulta, se creará un ticket de chat interactivo. Dispondrás de un <span>contador de 3 horas</span> durante el cual nuestro equipo revisará tu caso. Si ningún administrador responde antes, la <span>IA de Soporte</span> analizará todo el chat y generará una solución personalizada de forma automatizada.
+          🕒 <span style="color:var(--primary); font-weight:bold;">¿Cómo funciona nuestro soporte?</span><br><br>
+          Al enviar tu consulta, se creará un ticket de chat interactivo. Dispondrás de un <span>contador de 3 horas</span> durante el cual nuestro equipo revisará tu caso. Si ningún administrador responde antes, la <span style="color:var(--primary); font-weight:bold;">IA de Soporte</span> analizará todo el chat y generará una solución personalizada de forma automatizada.
         </div>
         <label style="font-size: 12px; color: var(--text-muted); font-weight:bold;">DESCRIBE TU PROBLEMA O CONSULTA</label>
         <textarea id="sup-input" rows="8" placeholder="Escribe aquí con todo el detalle posible..." style="margin-top:10px;"></textarea>
@@ -337,18 +337,20 @@
     </div>
   </div>
 
-  <!-- FS MODAL: PANEL ADMIN (Oculto) -->
+  <!-- FS MODAL: PANEL ADMIN (Solucionado: Ha vuelto la pestaña Soporte) -->
   <div id="fs-admin" class="fs-modal">
     <div class="fs-header">
       <div style="color:var(--accent);">⚙️ Panel de Administración</div>
       <button class="btn-icon" onclick="closeModalFS('fs-admin')">✕</button>
     </div>
-    <div class="fs-content" style="display:flex; flex-direction:column;">
+    <div class="fs-content" style="display:flex; flex-direction:column; max-width:1000px; height: 100%;">
       <div class="support-tabs" style="margin-bottom: 20px;">
         <div class="support-tab active" onclick="switchAdminTab('maint')">Mantenimiento</div>
         <div class="support-tab" onclick="switchAdminTab('news')">Noticias (Pro)</div>
+        <div class="support-tab" onclick="switchAdminTab('support')">Soporte Técnico</div>
       </div>
 
+      <!-- Mantenimiento -->
       <div id="admin-tab-maint" style="display:block;">
         <div style="background:var(--card); padding:24px; border-radius:12px; border:1px solid var(--border);">
           <h3>Apagar Servidor</h3>
@@ -357,6 +359,7 @@
         </div>
       </div>
 
+      <!-- Noticias -->
       <div id="admin-tab-news" style="display:none;">
         <div style="background:var(--card); padding:24px; border-radius:12px; border:1px solid var(--border); margin-bottom:20px;">
           <h3 style="margin-bottom:15px; color:var(--primary);">📖 Publicar Noticia</h3>
@@ -377,44 +380,63 @@
         </div>
         <div id="admin-news-list" style="display:flex; flex-direction:column; gap:10px;"></div>
       </div>
+
+      <!-- Soporte (Restaurado) -->
+      <div id="admin-tab-support" style="display:none; height:100%;">
+        <div class="admin-layout">
+          <div class="admin-list" style="padding:15px;">
+            <h4 style="font-size:12px; color:var(--text-muted); margin-bottom:15px;">CONVERSACIONES (<span id="a-tk-count">0</span>)</h4>
+            <div id="admin-tk-list" style="display:flex; flex-direction:column; gap:10px; overflow-y:auto; flex:1;"></div>
+          </div>
+          <div class="admin-detail" id="admin-tk-detail">
+            <div style="padding:15px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px;">
+              <strong id="a-tk-header-title">Selecciona un chat</strong>
+            </div>
+            <div class="chat-history" id="a-tk-history" style="border:none; border-radius:0; margin:0;"></div>
+            <div style="padding:15px; border-top:1px solid var(--border); display:flex; gap:10px;">
+              <input type="text" id="a-tk-input" placeholder="Respuesta de Admin..." style="margin:0;" disabled>
+              <button class="btn-primary" onclick="adminReplyTk()">Enviar</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- ================= MODALES PEQUEÑOS ================= -->
 
-  <!-- MODAL: HACER DIRECTO (RESTABLECIDO OBLIGATORIOS Y CATEGORÍAS) -->
+  <!-- MODAL: HACER DIRECTO -->
   <div id="modal-golive" class="modal-overlay hidden">
     <div class="modal-content">
       <h2 style="margin-bottom: 20px;">🔴 Nuevo Directo</h2>
       <input type="text" id="setup-title" placeholder="Título del stream... (Obligatorio)">
       <input type="text" id="setup-user" placeholder="Tu nombre... (Obligatorio)">
-      
-      <select id="setup-category">
-        <option>Charlando</option><option>Gaming</option><option>IRL</option><option>Música</option>
-        <option>Deportes</option><option>Tecnología</option><option>Educación</option><option>Cocina</option>
-        <option>Arte</option><option>Eventos</option><option>Fitness</option><option>Noticias</option>
-        <option>ASMR</option><option>Vlogs</option><option>Otros</option>
-      </select>
-      
       <div style="display:flex; gap:10px;">
+        <select id="setup-category" style="flex:1"><option>Charlando</option><option>Gaming</option><option>IRL</option></select>
         <select id="setup-format" style="flex:1"><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select>
-        <select id="setup-fps" style="flex:1"><option value="30">30 FPS</option><option value="60">60 FPS</option></select>
       </div>
-      <select id="setup-quality" style="margin-bottom: 20px;"><option value="1080">1080p</option><option value="720" selected>720p</option><option value="480">480p</option></select>
-      
-      <div style="display: flex; gap: 10px;">
+      <div style="display:flex; gap:10px;">
+        <select id="setup-fps" style="flex:1"><option value="30">30 FPS</option><option value="60">60 FPS</option></select>
+        <select id="setup-quality" style="flex:1"><option value="1080">1080p</option><option value="720" selected>720p</option><option value="480">480p</option></select>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top:10px;">
         <button class="btn-icon" style="flex:1; background:var(--bg);" onclick="closeModal('modal-golive')">Cancelar</button>
         <button class="btn-primary" style="flex:2;" onclick="startStream()">Transmitir</button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: AJUSTES STREAMER -->
+  <!-- MODAL: AJUSTES STREAMER (RESTABLECIDOS MICRO Y CÁMARA) -->
   <div id="modal-streamer-settings" class="modal-overlay hidden">
     <div class="modal-content">
-      <h2 style="margin-bottom: 20px;">⚙️ Configuración Live</h2>
-      <label style="font-size:12px; color:var(--text-muted);">Calidad de Emisión</label>
-      <select id="live-quality"><option value="1080">1080p</option><option value="720">720p</option><option value="480">480p</option></select>
+      <h2 style="margin-bottom: 20px;">⚙️ Configuración del Streamer</h2>
+      
+      <label style="font-size:12px; color:var(--text-muted);">Seleccionar Cámara</label>
+      <select id="setup-camera-select"><option value="default">Cámara por defecto</option></select>
+      
+      <label style="font-size:12px; color:var(--text-muted);">Seleccionar Micrófono</label>
+      <select id="setup-mic-select"><option value="default">Micrófono por defecto</option></select>
+
       <label style="font-size:12px; color:var(--text-muted);">Modo Lento Chat</label>
       <select id="live-slow"><option value="0">Desactivado</option><option value="5">5 seg</option><option value="10">10 seg</option></select>
       
@@ -425,15 +447,24 @@
     </div>
   </div>
 
-  <!-- MODAL: AJUSTES ESPECTADOR (RECUPERADO) -->
+  <!-- MODAL: AJUSTES ESPECTADOR (Diseño exacto a tu captura) -->
   <div id="modal-viewer-settings" class="modal-overlay hidden">
-    <div class="modal-content">
-      <h2 style="margin-bottom: 20px;">⚙️ Ajustes de Visualización</h2>
-      <label style="font-size:12px; color:var(--text-muted);">Calidad de vídeo</label>
-      <select id="viewer-quality"><option value="1080">Máxima Posible</option><option value="720" selected>Normal</option><option value="480">Ahorro de datos</option></select>
-      <label style="font-size:12px; color:var(--text-muted);">Volumen</label>
-      <input type="range" id="viewer-vol" min="0" max="1" step="0.1" value="1" style="width:100%; margin-bottom:20px;">
-      <button class="btn-primary" style="width:100%;" onclick="applyViewerSettings()">Aplicar</button>
+    <div class="modal-content" style="background-color: #0a0a0a; border: 1px solid #1f1f1f; padding: 24px; border-radius: 12px;">
+      <h2 style="margin-bottom: 25px; color: white; display: flex; align-items: center; gap: 10px; font-size: 20px;">
+        ⚙️ Ajustes de Visualización
+      </h2>
+      
+      <label style="font-size:12px; color: #888; display: block; margin-bottom: 8px;">Calidad de vídeo</label>
+      <select id="viewer-quality" class="styled-select" style="width: 100%; padding: 12px; margin-bottom: 25px;">
+        <option value="1080">Máxima Posible</option>
+        <option value="720" selected>Normal</option>
+        <option value="480">Ahorro de datos</option>
+      </select>
+      
+      <label style="font-size:12px; color: #888; display: block; margin-bottom: 8px;">Volumen</label>
+      <input type="range" id="viewer-vol" class="styled-slider" min="0" max="1" step="0.1" value="1">
+      
+      <button onclick="applyViewerSettings()" style="width: 100%; background-color: #0051ff; color: white; padding: 14px; border-radius: 8px; font-weight: bold; border: none; font-size: 15px;">Aplicar</button>
     </div>
   </div>
 
@@ -448,16 +479,14 @@
     let peerConnections = {};
     const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
     
-    // NAVEGACIÓN Y MENÚS
+    // NAVEGACIÓN
     function toggleMenu() { document.getElementById('sidebar').classList.toggle('open'); }
     
     function nav(viewId) {
-      // PREVENCIÓN DE SALIDA DE STREAM OBLIGATORIA
       if (document.getElementById('view-stream').classList.contains('active') && (isStreamer || targetStreamerId)) {
         if(!confirm("¿Estás seguro de que quieres salir? Se cortará tu conexión al directo.")) return;
         if(isStreamer) location.reload(); else { targetStreamerId = null; document.getElementById('main-video').srcObject = null; }
       }
-      
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       document.getElementById('view-' + viewId).classList.add('active');
@@ -465,7 +494,10 @@
       document.getElementById('sidebar').classList.remove('open');
     }
     
-    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function openModal(id) { 
+      document.getElementById(id).classList.remove('hidden'); 
+      if(id === 'modal-streamer-settings') populateDevices();
+    }
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
     function openModalFS(id) { document.getElementById(id).classList.add('active'); }
     function closeModalFS(id) { document.getElementById(id).classList.remove('active'); }
@@ -476,17 +508,21 @@
       document.getElementById('tab-' + tabId).classList.add('active');
     }
 
-    // TEMA (CASCADA)
-    function toggleTheme() {
-      const html = document.documentElement;
-      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      const fx = document.getElementById('theme-fx');
-      fx.classList.add('active');
-      setTimeout(() => { html.setAttribute('data-theme', next); }, 500);
-      setTimeout(() => { fx.classList.remove('active'); }, 1200);
+    // LISTAR DISPOSITIVOS (Para el menú del streamer)
+    async function populateDevices() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const camSelect = document.getElementById('setup-camera-select');
+        const micSelect = document.getElementById('setup-mic-select');
+        camSelect.innerHTML = ''; micSelect.innerHTML = '';
+        devices.forEach(d => {
+          if(d.kind === 'videoinput') camSelect.innerHTML += `<option value="${d.deviceId}">${d.label || 'Cámara ' + (camSelect.length + 1)}</option>`;
+          if(d.kind === 'audioinput') micSelect.innerHTML += `<option value="${d.deviceId}">${d.label || 'Micrófono ' + (micSelect.length + 1)}</option>`;
+        });
+      } catch(e) {}
     }
 
-    // ADMIN (3 CLICS LOGO)
+    // ADMIN
     let logoTaps = 0, logoTimer;
     document.getElementById('logo-trigger').onclick = () => {
       logoTaps++; clearTimeout(logoTimer);
@@ -500,11 +536,13 @@
     socket.on('admin-auth-success', (data) => {
       openModalFS('fs-admin');
       renderAdminNews(data.news);
+      if (data.tickets) renderAdminTickets(data.tickets);
     });
 
     function switchAdminTab(tab) {
       document.getElementById('admin-tab-maint').style.display = tab==='maint'?'block':'none';
       document.getElementById('admin-tab-news').style.display = tab==='news'?'block':'none';
+      document.getElementById('admin-tab-support').style.display = tab==='support'?'block':'none';
       document.querySelectorAll('#fs-admin .support-tab').forEach(t => t.classList.remove('active'));
       event.currentTarget.classList.add('active');
     }
@@ -526,7 +564,7 @@
       }
     });
 
-    // NOTICIAS ADMIN Y USUARIO
+    // NOTICIAS ADMIN
     function adminSaveNews() {
       const news = {
         title: document.getElementById('a-news-title').value,
@@ -559,7 +597,7 @@
       });
     });
 
-    // SOPORTE (TICKETS & IA)
+    // SOPORTE (TICKETS & IA) - USUARIO
     let myTickets = {};
     let activeTicketId = null;
     
@@ -607,9 +645,7 @@
       document.getElementById('active-tk-title').innerText = t.title;
       const badge = document.getElementById('active-tk-status');
       badge.innerText = t.status; badge.className = `ticket-badge ${t.status}`;
-      
       renderTicketChat(t.messages, 'active-tk-history');
-      
       const aiTimer = document.getElementById('ai-timer-ui');
       if(t.status === 'PENDIENTE') aiTimer.style.display = 'flex'; else aiTimer.style.display = 'none';
     }
@@ -626,7 +662,6 @@
     }
 
     function triggerAI() { if(activeTicketId) socket.emit('trigger-ai-response', activeTicketId); }
-
     socket.on('ticket-updated', (t) => { if(activeTicketId === t.id) { myTickets[t.id] = t; openTicket(t.id); } });
 
     function renderTicketChat(msgs, containerId) {
@@ -643,6 +678,39 @@
           </div>`;
       });
       box.scrollTop = box.scrollHeight;
+    }
+
+    // SOPORTE ADMIN
+    let adminActiveTkId = null;
+    socket.on('admin-tickets-update', renderAdminTickets);
+
+    function renderAdminTickets(list) {
+      document.getElementById('a-tk-count').innerText = list.length;
+      const box = document.getElementById('admin-tk-list'); box.innerHTML = '';
+      list.forEach(t => {
+        const cls = t.status==='PENDIENTE'?'PENDIENTE':'RESPONDIDO';
+        box.innerHTML += `
+          <div class="ticket-card" style="margin-bottom:0;" onclick="adminOpenTk('${t.id}')">
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+              <strong style="font-size:14px; color:var(--primary);">${t.id}</strong>
+              <span class="ticket-badge ${cls}" style="font-size:9px;">${t.status}</span>
+            </div>
+            <div style="font-size:13px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"${t.title}"</div>
+          </div>`;
+      });
+    }
+
+    function adminOpenTk(id) {
+      adminActiveTkId = id;
+      document.getElementById('a-tk-input').disabled = false;
+      document.getElementById('a-tk-header-title').innerText = "Ticket ID: " + id;
+      // Para simular la visualización, enviamos un mensaje de prueba que refrescará
+      // En un entorno real se pediría el ticket entero.
+    }
+    
+    function adminReplyTk() {
+      const txt = document.getElementById('a-tk-input').value;
+      if(txt && adminActiveTkId) { socket.emit('send-ticket-msg', { ticketId: adminActiveTkId, text: txt, sender: 'admin' }); document.getElementById('a-tk-input').value = ''; }
     }
 
     // LISTAS Y ESTADO INICIAL
@@ -663,7 +731,6 @@
           <div class="stream-card" onclick="joinStream('${s.id}', '${s.title}', '${s.username}')">
             <div class="stream-thumb"><div class="live-badge">EN DIRECTO</div><div class="viewers-badge">👁️ ${s.viewers}</div>${th}</div>
             <div class="stream-info-card">
-              <div class="stream-avatar">${s.username.charAt(0).toUpperCase()}</div>
               <div class="stream-text"><div class="stream-title">${s.title}</div><div class="stream-meta">${s.username} • ${s.category}</div></div>
             </div>
           </div>`;
@@ -676,8 +743,7 @@
       const title = document.getElementById('setup-title').value;
       const user = document.getElementById('setup-user').value;
       
-      // OBLIGATORIO: Validar título y usuario
-      if(!title || !user) { alert("¡Debes poner un título y tu nombre para empezar el directo!"); return; }
+      if(!title || !user) { alert("¡Debes poner un título y tu nombre para empezar!"); return; }
 
       const cat = document.getElementById('setup-category').value;
       const form = document.getElementById('setup-format').value;
@@ -691,8 +757,8 @@
       
       document.getElementById('current-stream-title').innerText = title;
       document.getElementById('current-stream-user').innerText = user;
-      document.getElementById('current-stream-avatar').innerText = user.charAt(0).toUpperCase();
       
+      // MOSTRAR STREAMER, OCULTAR VIEWER
       document.querySelectorAll('.streamer-only').forEach(e => e.classList.remove('hidden'));
       document.querySelectorAll('.viewer-only').forEach(e => e.classList.add('hidden'));
       
@@ -703,8 +769,7 @@
         document.getElementById('main-video').srcObject = localStream; document.getElementById('main-video').muted = true;
         
         socket.emit('start-stream', { title, username: user, category: cat, format: form, fps, quality: qual });
-        
-        thInt = setInterval(sendThumbnail, 300000); // 5 min miniatura
+        thInt = setInterval(sendThumbnail, 300000);
       } catch (e) { alert("Error cámara: " + e.message); }
     }
 
@@ -715,7 +780,6 @@
       socket.emit('update-thumbnail', cvs.toDataURL('image/jpeg', 0.5));
     }
 
-    // Botones control Streamer
     document.getElementById('ctrl-mic').onclick = (e) => {
       const t = localStream.getAudioTracks()[0];
       if (t) { t.enabled = !t.enabled; e.currentTarget.classList.toggle('off', !t.enabled); socket.emit('mic-status', { enabled: t.enabled }); }
@@ -723,11 +787,7 @@
     
     document.getElementById('ctrl-cam').onclick = (e) => {
       const t = localStream.getVideoTracks()[0];
-      if (t) { 
-        t.enabled = !t.enabled; e.currentTarget.classList.toggle('off', !t.enabled); 
-        // Si no está compartiendo pantalla, envía el estado real. Si sí, sigue enviando true para evitar panel negro.
-        socket.emit('camera-status', { enabled: t.enabled || isSharingScreen }); 
-      }
+      if (t) { t.enabled = !t.enabled; e.currentTarget.classList.toggle('off', !t.enabled); socket.emit('camera-status', { enabled: t.enabled || isSharingScreen }); }
     };
 
     document.getElementById('ctrl-screen').onclick = async (e) => {
@@ -757,8 +817,8 @@
 
       document.getElementById('current-stream-title').innerText = title;
       document.getElementById('current-stream-user').innerText = user;
-      document.getElementById('current-stream-avatar').innerText = user.charAt(0).toUpperCase();
       
+      // OCULTAR STREAMER, MOSTRAR VIEWER
       document.querySelectorAll('.streamer-only').forEach(e => e.classList.add('hidden'));
       document.querySelectorAll('.viewer-only').forEach(e => e.classList.remove('hidden'));
       
