@@ -27,7 +27,7 @@
 
     .card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 20px; width: 100%; max-width: 440px; margin-bottom: 15px; position: relative; }
     
-    input { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: white; margin-bottom: 12px; font-size: 14px; }
+    input, select { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: white; margin-bottom: 12px; font-size: 14px; }
     
     button { width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s; }
     .btn-red { background: var(--accent); color: white; }
@@ -38,13 +38,23 @@
     .stream-name { font-weight: bold; font-size: 14px; display: flex; align-items: center; gap: 6px; }
     .live-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; }
 
-    .video-wrapper { position: relative; width: 100%; aspect-ratio: 9/16; background: #000; border-radius: 16px; overflow: hidden; margin-top: 10px; border: 2px solid var(--border); }
+    .video-wrapper { position: relative; width: 100%; aspect-ratio: 9/16; background: #050505; border-radius: 16px; overflow: hidden; margin-top: 10px; border: 2px solid var(--border); }
     video { width: 100%; height: 100%; object-fit: cover; background: #000; }
     .hidden { display: none !important; }
 
-    .controls-bar { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: rgba(0,0,0,0.7); padding: 8px 14px; border-radius: 30px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); }
+    .controls-bar { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: rgba(0,0,0,0.7); padding: 8px 14px; border-radius: 30px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); z-index: 20; }
     .controls-bar button { width: 42px; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; background: var(--card-inner); border-radius: 50%; border: 1px solid var(--border); }
     .controls-bar button.off { background: var(--accent); color: white; }
+
+    /* Modal de Configuración */
+    .settings-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30; border-radius: 16px; padding: 20px; }
+    .settings-modal h4 { margin-bottom: 15px; color: var(--accent); }
+
+    /* PANTALLA DE CARGA (SPINNER) */
+    .loader-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #050505; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
+    .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top: 4px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loader-overlay p { font-size: 13px; color: var(--text-muted); font-weight: bold; }
   </style>
 </head>
 <body>
@@ -58,7 +68,6 @@
   <div id="screen-setup" class="card">
     <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">Tu nombre de usuario:</label>
     <input type="text" id="username" placeholder="Ej: Carlos" value="PotatoStreamer">
-
     <button id="btn-broadcast" class="btn-red">📹 Transmitir mi Cámara</button>
 
     <div style="margin-top: 25px;">
@@ -69,9 +78,13 @@
     </div>
   </div>
 
-  <!-- Pantalla de Transmisión (Streamer) -->
+  <!-- Pantalla de Streamer -->
   <div id="screen-streamer" class="card hidden">
-    <h3>🔴 Estás transmitiendo</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3>🔴 En Directo</h3>
+      <button id="btn-settings-streamer" style="width: auto; padding: 6px 12px; background: transparent; font-size: 20px;">⚙️</button>
+    </div>
+    
     <div class="video-wrapper">
       <video id="local-video" autoplay playsinline muted></video>
       <div class="controls-bar">
@@ -79,15 +92,45 @@
         <button id="ctrl-cam">📹</button>
         <button id="ctrl-flip">🔄</button>
       </div>
+
+      <!-- Configuración del Streamer (Selector de Micro) -->
+      <div id="modal-streamer" class="settings-modal hidden">
+        <h4>Configuración de Audio</h4>
+        <label style="font-size: 12px; color: var(--text-muted); margin-bottom: 5px;">Selecciona tu micrófono:</label>
+        <select id="mic-select"></select>
+        <button id="close-modal-streamer" class="btn-dark">Guardar y Cerrar</button>
+      </div>
     </div>
     <button onclick="location.reload()" class="btn-dark">✕ Finalizar Directo</button>
   </div>
 
   <!-- Pantalla de Espectador -->
   <div id="screen-viewer" class="card hidden">
-    <h3 id="viewer-title">👀 Viendo directo</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 id="viewer-title">👀 Viendo directo</h3>
+      <button id="btn-settings-viewer" style="width: auto; padding: 6px 12px; background: transparent; font-size: 20px;">⚙️</button>
+    </div>
+
     <div class="video-wrapper">
-      <video id="remote-video" autoplay playsinline></video>
+      <!-- PANTALLA DE CARGA -->
+      <div id="loader-overlay" class="loader-overlay">
+        <div class="spinner"></div>
+        <p>Conectando el vídeo...</p>
+      </div>
+
+      <video id="remote-video" autoplay playsinline controls></video>
+
+      <!-- Configuración del Espectador (Calidad) -->
+      <div id="modal-viewer" class="settings-modal hidden">
+        <h4>Calidad del Directo</h4>
+        <select id="quality-select">
+          <option value="480">Fluido (480p)</option>
+          <option value="720" selected>Normal (720p)</option>
+          <option value="1080">Alta (1080p)</option>
+          <option value="1440">Ultra (2K)</option>
+        </select>
+        <button id="close-modal-viewer" class="btn-dark">Aplicar Calidad</button>
+      </div>
     </div>
     <button onclick="location.reload()" class="btn-dark">✕ Salir del Directo</button>
   </div>
@@ -97,6 +140,7 @@
     let localStream;
     let peerConnections = {};
     let currentFacingMode = 'user';
+    let currentTargetStreamer = null;
 
     const config = {
       iceServers: [
@@ -105,15 +149,14 @@
       ]
     };
 
+    // ACTUALIZAR LISTA DE DIRECTOS
     socket.on('update-stream-list', (streams) => {
       const list = document.getElementById('stream-list');
       list.innerHTML = '';
-
       if (streams.length === 0) {
-        list.innerHTML = '<p style="font-size: 13px; color: var(--text-muted);">No hay nadie transmitiendo ahora mismo.</p>';
+        list.innerHTML = '<p style="font-size: 13px; color: var(--text-muted);">No hay nadie transmitiendo ahora.</p>';
         return;
       }
-
       streams.forEach(s => {
         if (s.id === socket.id) return;
         const div = document.createElement('div');
@@ -126,96 +169,146 @@
       });
     });
 
-    async function startMedia(facingMode) {
+    // INICIAR CÁMARA (STREAMER)
+    async function startMedia(facingMode, audioDeviceId = null) {
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
       }
       try {
-        localStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: facingMode }, 
-          audio: true 
+        const constraints = {
+          video: { facingMode: facingMode, height: { ideal: 720 } },
+          audio: audioDeviceId ? { deviceId: { exact: audioDeviceId } } : true
+        };
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        document.getElementById('local-video').srcObject = localStream;
+
+        // Cargar micrófonos disponibles en el menú
+        loadMicrophones();
+
+        // Si cambiamos de cámara/micro en directo, actualizamos las conexiones de los espectadores
+        Object.values(peerConnections).forEach(pc => {
+          const videoTrack = localStream.getVideoTracks()[0];
+          const audioTrack = localStream.getAudioTracks()[0];
+          
+          const videoSender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+          if (videoSender) videoSender.replaceTrack(videoTrack);
+          
+          const audioSender = pc.getSenders().find(s => s.track && s.track.kind === 'audio');
+          if (audioSender) audioSender.replaceTrack(audioTrack);
         });
-        
-        const localVideo = document.getElementById('local-video');
-        localVideo.srcObject = localStream;
       } catch (e) {
-        alert('Error al acceder a la cámara: ' + e.message);
+        alert('Error cámara/micro: ' + e.message);
       }
     }
 
     document.getElementById('btn-broadcast').onclick = async () => {
       const name = document.getElementById('username').value || 'Anónimo';
       await startMedia(currentFacingMode);
-
       document.getElementById('screen-setup').classList.add('hidden');
       document.getElementById('screen-streamer').classList.remove('hidden');
-
       socket.emit('start-stream', { username: name });
     };
 
+    // BOTONES DE CONTROL DE CÁMARA/MICRO
     document.getElementById('ctrl-mic').onclick = () => {
       const track = localStream.getAudioTracks()[0];
-      if (track) {
-        track.enabled = !track.enabled;
-        document.getElementById('ctrl-mic').classList.toggle('off', !track.enabled);
-      }
+      if (track) { track.enabled = !track.enabled; document.getElementById('ctrl-mic').classList.toggle('off', !track.enabled); }
     };
-
     document.getElementById('ctrl-cam').onclick = () => {
       const track = localStream.getVideoTracks()[0];
-      if (track) {
-        track.enabled = !track.enabled;
-        document.getElementById('ctrl-cam').classList.toggle('off', !track.enabled);
-      }
+      if (track) { track.enabled = !track.enabled; document.getElementById('ctrl-cam').classList.toggle('off', !track.enabled); }
     };
-
     document.getElementById('ctrl-flip').onclick = async () => {
       currentFacingMode = (currentFacingMode === 'user' ? 'environment' : 'user');
       await startMedia(currentFacingMode);
     };
 
-    // EL ESPECTADOR PIDE VER Y ENVÍA LA OFERTA
-    async function watchStream(targetId, username) {
+    // CONFIGURACIÓN STREAMER: DETECTAR MICRÓFONOS
+    async function loadMicrophones() {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = devices.filter(device => device.kind === 'audioinput');
+      const select = document.getElementById('mic-select');
+      select.innerHTML = '';
+      audioInputs.forEach(device => {
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.text = device.label || `Micrófono ${select.length + 1}`;
+        select.appendChild(option);
+      });
+    }
+
+    document.getElementById('btn-settings-streamer').onclick = () => document.getElementById('modal-streamer').classList.remove('hidden');
+    document.getElementById('close-modal-streamer').onclick = async () => {
+      document.getElementById('modal-streamer').classList.add('hidden');
+      const selectedMic = document.getElementById('mic-select').value;
+      await startMedia(currentFacingMode, selectedMic);
+    };
+
+    // CONFIGURACIÓN ESPECTADOR: CALIDAD (1080p, 2K...)
+    document.getElementById('btn-settings-viewer').onclick = () => document.getElementById('modal-viewer').classList.remove('hidden');
+    document.getElementById('close-modal-viewer').onclick = () => {
+      document.getElementById('modal-viewer').classList.add('hidden');
+      const height = parseInt(document.getElementById('quality-select').value);
+      // Le pedimos al streamer que cambie su resolución
+      socket.emit('signal', { to: currentTargetStreamer, signal: { type: 'request-quality', height: height } });
+    };
+
+    // QUITAR PANTALLA DE CARGA CUANDO ARRANCA EL VÍDEO
+    document.getElementById('remote-video').onplaying = () => {
+      document.getElementById('loader-overlay').style.display = 'none';
+    };
+
+    // EL ESPECTADOR INICIA EL PROCESO (El fix definitivo)
+    function watchStream(targetId, username) {
       document.getElementById('screen-setup').classList.add('hidden');
       document.getElementById('screen-viewer').classList.remove('hidden');
       document.getElementById('viewer-title').innerText = `👀 Viendo a ${username}`;
+      currentTargetStreamer = targetId;
 
-      const pc = createPeerConnection(targetId);
-      // El espectador solo quiere recibir audio y vídeo
-      pc.addTransceiver('video', { direction: 'recvonly' });
-      pc.addTransceiver('audio', { direction: 'recvonly' });
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      socket.emit('signal', { to: targetId, signal: pc.localDescription });
+      // El espectador solo avisa de que quiere entrar. El Streamer hará la oferta.
+      socket.emit('signal', { to: targetId, signal: { type: 'viewer-ready' } });
     }
 
-    // GESTIÓN DE SEÑALES ENTRE STREAMER Y ESPECTADOR
+    // GESTIÓN DE SEÑALES INVERTIDA
     socket.on('signal', async (data) => {
-      let pc = peerConnections[data.from] || createPeerConnection(data.from);
+      let pc = peerConnections[data.from];
 
-      // Si el streamer recibe una oferta de un espectador
-      if (data.signal.type === 'offer') {
-        await pc.setRemoteDescription(new RTCSessionDescription(data.signal));
+      try {
+        if (data.signal.type === 'viewer-ready') {
+          // 1. EL STREAMER RECIBE EL AVISO Y CREA LA OFERTA
+          pc = createPeerConnection(data.from);
+          if (localStream) {
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+          }
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          socket.emit('signal', { to: data.from, signal: { type: 'offer', sdp: offer } });
+
+        } else if (data.signal.type === 'offer') {
+          // 2. EL ESPECTADOR RECIBE LA OFERTA DE VÍDEO
+          pc = createPeerConnection(data.from);
+          await pc.setRemoteDescription(new RTCSessionDescription(data.signal.sdp));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          socket.emit('signal', { to: data.from, signal: { type: 'answer', sdp: answer } });
+
+        } else if (data.signal.type === 'answer') {
+          // 3. EL STREAMER RECIBE LA RESPUESTA
+          await pc.setRemoteDescription(new RTCSessionDescription(data.signal.sdp));
+
+        } else if (data.signal.candidate) {
+          if (!pc) pc = createPeerConnection(data.from);
+          await pc.addIceCandidate(new RTCIceCandidate(data.signal.candidate));
         
-        // El streamer añade sus pistas de cámara al canal
-        if (localStream) {
-          localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        } else if (data.signal.type === 'request-quality') {
+          // 4. EL STREAMER APLICA LA CALIDAD (1080p, 2K) SOLICITADA POR EL ESPECTADOR
+          const videoTrack = localStream.getVideoTracks()[0];
+          if (videoTrack) {
+            await videoTrack.applyConstraints({ height: { ideal: data.signal.height } });
+          }
         }
-
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        socket.emit('signal', { to: data.from, signal: pc.localDescription });
-
-      } else if (data.signal.type === 'answer') {
-        await pc.setRemoteDescription(new RTCSessionDescription(data.signal));
-
-      } else if (data.signal.candidate) {
-        try {
-          await pc.addIceCandidate(new RTCIceCandidate(data.signal));
-        } catch (e) {
-          console.error("Error ICE", e);
-        }
+      } catch (err) {
+        console.error("Error WebRTC:", err);
       }
     });
 
@@ -224,13 +317,13 @@
       peerConnections[targetId] = pc;
 
       pc.onicecandidate = e => {
-        if (e.candidate) socket.emit('signal', { to: targetId, signal: { candidate: e.candidate } });
+        if (e.candidate) {
+          socket.emit('signal', { to: targetId, signal: { type: 'candidate', candidate: e.candidate } });
+        }
       };
 
       pc.ontrack = e => {
-        const remoteVideo = document.getElementById('remote-video');
-        remoteVideo.srcObject = e.streams[0];
-        remoteVideo.play().catch(err => console.log("Autoplay:", err));
+        document.getElementById('remote-video').srcObject = e.streams[0];
       };
 
       return pc;
