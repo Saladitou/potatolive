@@ -11,7 +11,6 @@ let supportTickets = {};
 let maintenanceMode = false;
 let adminSockets = new Set();
 
-// Utilidad para repartir puntos
 function resolvePrediction(streamId, winningOption) {
   const stream = streams[streamId];
   if (!stream || !stream.prediction) return;
@@ -139,18 +138,21 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Arreglado el bug del chat (ahora el streamer no necesita estar en viewersData)
   socket.on('chat-message', (data) => {
     const stream = streams[data.streamerId];
-    if (stream && stream.viewersData[socket.id]) {
-      const now = Date.now();
-      if (now - stream.viewersData[socket.id].lastChat > 10000) {
-        stream.viewersData[socket.id].points += 5;
-        stream.viewersData[socket.id].lastChat = now;
-        socket.emit('points-update', stream.viewersData[socket.id].points);
-        io.to(data.streamerId).emit('ranking-update', getRanking(data.streamerId));
+    if (stream) {
+      if (stream.viewersData[socket.id]) {
+        const now = Date.now();
+        if (now - stream.viewersData[socket.id].lastChat > 10000) {
+          stream.viewersData[socket.id].points += 5;
+          stream.viewersData[socket.id].lastChat = now;
+          socket.emit('points-update', stream.viewersData[socket.id].points);
+          io.to(data.streamerId).emit('ranking-update', getRanking(data.streamerId));
+        }
       }
+      io.to(data.streamerId).emit('chat-message', { username: data.username, text: data.text });
     }
-    io.to(data.streamerId).emit('chat-message', { username: data.username, text: data.text });
   });
 
   socket.on('claim-watch-points', (streamerId) => {
@@ -162,7 +164,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('update-thumbnail', (base64) => { if (streams[socket.id]) { streams[socket.id].thumbnail = base64; io.emit('update-stream-list', Object.values(streams)); } });
-  socket.on('add-like', (streamerId) => { if (streams[streamerId]) { streams[streamerId].likes++; io.to(streamerId).emit('update-likes', streams[streamerId].likes); } });
+  
+  socket.on('add-like', (streamerId) => { 
+    if (streams[streamerId]) { 
+      streams[streamerId].likes++; 
+      io.to(streamerId).emit('update-likes', streams[streamerId].likes); 
+      io.emit('update-stream-list', Object.values(streams));
+    } 
+  });
+  
   socket.on('update-viewers', (count) => { if (streams[socket.id]) { streams[socket.id].viewers = count; io.emit('update-stream-list', Object.values(streams)); } });
 
   // APUESTAS Y RECOMPENSAS
@@ -219,4 +229,4 @@ io.on('connection', (socket) => {
   });
 });
 
-http.listen(process.env.PORT || 3000, () => console.log('Servidor Completo Activo'));
+http.listen(process.env.PORT || 3000, () => console.log('Servidor Completo Activo V7'));
