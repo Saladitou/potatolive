@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PotatoLive — V3</title>
+  <title>PotatoLive — V3 Pro</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
     :root {
@@ -25,14 +25,12 @@
     
     button { padding: 12px; border-radius: 10px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s; }
     .btn-red { background: var(--accent); color: white; width: 100%; }
-    .btn-green { background: var(--green); color: #000; }
+    .btn-green { background: var(--green); color: #000; width: 100%; }
     .btn-dark { background: var(--card-inner); color: white; border: 1px solid var(--border); width: 100%; margin-top: 10px; }
-    .btn-icon { background: var(--card-inner); color: white; border: 1px solid var(--border); }
+    .btn-icon { background: var(--card-inner); color: white; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
 
-    /* Barra de filtros */
     .filters { display: flex; gap: 8px; margin-bottom: 15px; }
 
-    /* Lista de directos */
     .stream-item { background: var(--card-inner); padding: 12px; border-radius: 12px; border: 1px solid var(--border); margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
     .stream-header { display: flex; justify-content: space-between; align-items: center; }
     .stream-info { font-size: 12px; color: var(--text-muted); display: flex; gap: 10px; }
@@ -46,11 +44,18 @@
     .hidden { display: none !important; }
 
     /* Controles */
-    .controls-bar { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: rgba(0,0,0,0.7); padding: 8px 14px; border-radius: 30px; backdrop-filter: blur(8px); z-index: 20; }
-    .controls-bar button { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; font-size: 18px; background: var(--card-inner); border-radius: 50%; padding: 0; }
+    .controls-bar { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: rgba(0,0,0,0.7); padding: 8px 14px; border-radius: 30px; backdrop-filter: blur(8px); z-index: 20; border: 1px solid rgba(255,255,255,0.1); }
+    .controls-bar button { width: 42px; height: 42px; border-radius: 50%; font-size: 18px; padding: 0; }
     .controls-bar button.off { background: var(--accent); color: white; }
 
-    /* Overlays de vídeo */
+    /* UI Compartir Pantalla PIP */
+    #pip-controls { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); padding: 6px 12px; border-radius: 12px; display: flex; gap: 8px; z-index: 30; border: 1px solid var(--border); }
+    #pip-controls button { width: 34px; height: 34px; border-radius: 8px; }
+
+    /* Modales de Configuración */
+    .settings-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 50; border-radius: 18px; }
+    .settings-content { background: var(--card-inner); padding: 20px; border-radius: 16px; width: 90%; max-width: 320px; border: 1px solid var(--border); }
+    
     .status-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
     .live-stats { font-size: 13px; color: var(--text-muted); font-weight: bold; }
     .cam-off-msg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 15; text-align: center; padding: 20px; }
@@ -69,26 +74,14 @@
   <div id="screen-setup" class="card">
     <div class="input-group">
       <input type="text" id="username" placeholder="Tu nombre..." value="Pato">
-      <button class="btn-icon" id="btn-random-name" title="Nombre aleatorio">🎲</button>
+      <button class="btn-icon" id="btn-random-name" title="Nombre aleatorio" style="width: 50px;">🎲</button>
     </div>
     
     <div class="input-group">
       <select id="category">
-        <option value="Charlando">Charlando</option>
-        <option value="Gaming">Gaming</option>
-        <option value="IRL">IRL</option>
-        <option value="Música">Música</option>
-        <option value="Deportes">Deportes</option>
-        <option value="Tecnología">Tecnología</option>
-        <option value="Educación">Educación</option>
-        <option value="Cocina">Cocina</option>
-        <option value="Arte">Arte</option>
-        <option value="Eventos">Eventos</option>
-        <option value="Fitness">Fitness</option>
-        <option value="Noticias">Noticias</option>
-        <option value="ASMR">ASMR</option>
-        <option value="Vlogs">Vlogs</option>
-        <option value="Otros">Otros</option>
+        <option value="Charlando">Charlando</option><option value="Gaming">Gaming</option>
+        <option value="IRL">IRL</option><option value="Música">Música</option>
+        <option value="Tecnología">Tecnología</option><option value="Otros">Otros</option>
       </select>
       <select id="format">
         <option value="vertical">📱 Vertical</option>
@@ -109,13 +102,11 @@
         <input type="text" id="search-bar" placeholder="Buscar canal..." onkeyup="renderStreamList()">
         <select id="sort-select" onchange="renderStreamList()" style="width: 140px;">
           <option value="viewers">🔥 Top Viewers</option>
-          <option value="recent">🕒 Más recientes</option>
+          <option value="recent">🕒 Recientes</option>
           <option value="alpha">A-Z Alfabético</option>
         </select>
       </div>
-      <div id="stream-list">
-        <p style="font-size: 13px; color: var(--text-muted);">Buscando transmisiones...</p>
-      </div>
+      <div id="stream-list"><p style="font-size: 13px; color: var(--text-muted);">Buscando transmisiones...</p></div>
     </div>
   </div>
 
@@ -126,12 +117,39 @@
       <div class="live-stats" id="streamer-stats">⏱️ 00:00 | 👁️ 0</div>
     </div>
     <div class="video-wrapper" id="streamer-wrapper">
+      
+      <!-- Controles PIP al compartir pantalla -->
+      <div id="pip-controls" class="hidden">
+        <button class="btn-icon" onclick="changePip('top-left')">↖️</button>
+        <button class="btn-icon" onclick="changePip('top-right')">↗️</button>
+        <button class="btn-icon" onclick="changePip('bottom-left')">↙️</button>
+        <button class="btn-icon" onclick="changePip('bottom-right')">↘️</button>
+        <button class="btn-icon" onclick="changePip('hidden')" style="color: var(--accent);">❌</button>
+      </div>
+
       <video id="local-video" autoplay playsinline muted></video>
       <div class="controls-bar">
-        <button id="ctrl-mic">🎤</button>
-        <button id="ctrl-cam">📹</button>
-        <button id="ctrl-screen">💻</button>
-        <button id="ctrl-flip">🔄</button>
+        <button id="ctrl-mic" class="btn-icon">🎤</button>
+        <button id="ctrl-cam" class="btn-icon">📹</button>
+        <button id="ctrl-screen" class="btn-icon">💻</button>
+        <button id="ctrl-flip" class="btn-icon">🔄</button>
+        <button id="btn-settings-streamer" class="btn-icon">⚙️</button>
+      </div>
+
+      <!-- Ajustes Streamer -->
+      <div id="modal-streamer" class="settings-modal hidden">
+        <div class="settings-content">
+          <h4 style="margin-bottom: 15px;">⚙️ Ajustes en Directo</h4>
+          <label style="font-size: 12px; color: var(--text-muted);">Micrófono:</label>
+          <select id="mic-select" style="margin-top: 5px; margin-bottom: 15px;"></select>
+          <label style="font-size: 12px; color: var(--text-muted);">Resolución Máxima:</label>
+          <select id="quality-select" style="margin-top: 5px; margin-bottom: 20px;">
+            <option value="480">Fluido (480p)</option>
+            <option value="720">Normal (720p)</option>
+            <option value="1080">Alta (1080p)</option>
+          </select>
+          <button id="close-modal-streamer" class="btn-green">Aplicar Cambios</button>
+        </div>
       </div>
     </div>
     <button onclick="location.reload()" class="btn-dark">✕ Finalizar Directo</button>
@@ -146,9 +164,24 @@
     <div class="video-wrapper" id="viewer-wrapper">
       <div class="loader" id="viewer-loader"></div>
       <div class="cam-off-msg hidden" id="cam-off-overlay">🚫 El streamer ha pausado la cámara</div>
+      
       <video id="remote-video" autoplay playsinline></video>
       <div class="controls-bar">
-        <button id="ctrl-fullscreen">🔲</button>
+        <button id="ctrl-fullscreen" class="btn-icon">🔲</button>
+        <button id="btn-settings-viewer" class="btn-icon">⚙️</button>
+      </div>
+
+      <!-- Ajustes Espectador -->
+      <div id="modal-viewer" class="settings-modal hidden">
+        <div class="settings-content">
+          <h4 style="margin-bottom: 15px;">⚙️ Ajustes de Visualización</h4>
+          <p style="font-size: 11px; color: var(--accent); margin-bottom: 15px; text-align: center;">
+            La calidad gráfica está gestionada automáticamente por el Streamer para la mejor experiencia.
+          </p>
+          <label style="font-size: 12px; color: var(--text-muted);">Volumen:</label>
+          <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1" style="width: 100%; margin-top: 10px; margin-bottom: 20px;">
+          <button id="close-modal-viewer" class="btn-green">Cerrar Ajustes</button>
+        </div>
       </div>
     </div>
     <button onclick="location.reload()" class="btn-dark">✕ Salir del Directo</button>
@@ -160,15 +193,24 @@
     let peerConnections = {};
     let currentFacingMode = 'user';
     let currentStreamsData = [];
-    let streamStartTime = null;
-    let updateTimerInterval;
-    let targetStreamerId = null;
+    let streamStartTime = null, targetStreamerId = null;
+
+    // Variables del Mezclador (Compartir pantalla)
+    let isSharingScreen = false;
+    let pipPos = 'bottom-right';
+    let renderLoop;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const rawCamVideo = document.createElement('video');
+    rawCamVideo.muted = true; rawCamVideo.autoplay = true; rawCamVideo.playsInline = true;
+    const rawScreenVideo = document.createElement('video');
+    rawScreenVideo.muted = true; rawScreenVideo.autoplay = true; rawScreenVideo.playsInline = true;
 
     const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-    // 1. GENERADOR DE NOMBRES Y GESTIÓN DE SALA
-    const adj = ["Feliz", "Ninja", "Pro", "Loco", "Master", "Live", "Gamer"];
-    const noun = ["Pato", "Potato", "Gato", "Lobo", "Oso", "Panda"];
+    // --- GENERADOR NOMBRES & LISTA ---
+    const adj = ["Pro", "Ninja", "Live", "Boss", "Max", "Gamer"];
+    const noun = ["Potato", "Pato", "Gato", "Lobo", "Oso"];
     document.getElementById('btn-random-name').onclick = () => {
       document.getElementById('username').value = noun[Math.floor(Math.random()*noun.length)] + adj[Math.floor(Math.random()*adj.length)] + Math.floor(Math.random()*99);
     };
@@ -176,8 +218,6 @@
     socket.on('update-stream-list', (streams) => {
       currentStreamsData = streams;
       renderStreamList();
-      
-      // Actualizar stats para el espectador
       if (targetStreamerId) {
         const s = streams.find(x => x.id === targetStreamerId);
         if (s) updateTimeAndStats('viewer-stats', s.startTime, s.viewers);
@@ -189,135 +229,207 @@
       const search = document.getElementById('search-bar').value.toLowerCase();
       const sort = document.getElementById('sort-select').value;
       list.innerHTML = '';
-
       let filtered = currentStreamsData.filter(s => s.id !== socket.id && s.username.toLowerCase().includes(search));
-      
       if (sort === 'viewers') filtered.sort((a,b) => b.viewers - a.viewers);
       else if (sort === 'recent') filtered.sort((a,b) => b.startTime - a.startTime);
       else if (sort === 'alpha') filtered.sort((a,b) => a.username.localeCompare(b.username));
 
-      if (filtered.length === 0) {
-        list.innerHTML = '<p style="font-size: 13px; color: var(--text-muted);">No se encontraron canales.</p>';
-        return;
-      }
+      if (filtered.length === 0) return list.innerHTML = '<p style="font-size: 13px; color: var(--text-muted);">No hay canales activos.</p>';
 
       filtered.forEach(s => {
         const uptime = Math.floor((Date.now() - s.startTime) / 60000);
-        const div = document.createElement('div');
-        div.className = 'stream-item';
-        div.innerHTML = `
-          <div class="stream-header">
-            <strong>🔴 ${s.username}</strong>
-            <button class="btn-green" style="padding: 6px 12px;" onclick="watchStream('${s.id}', '${s.username}')">VER</button>
-          </div>
-          <div class="stream-info">
-            <span class="badge">👁️ ${s.viewers}</span>
-            <span class="badge">🏷️ ${s.category}</span>
-            <span>⏱️ ${uptime}m</span>
-          </div>
-        `;
-        list.appendChild(div);
+        list.innerHTML += `
+          <div class="stream-item">
+            <div class="stream-header">
+              <strong>🔴 ${s.username}</strong>
+              <button class="btn-green" style="width: auto; padding: 6px 12px;" onclick="watchStream('${s.id}', '${s.username}')">VER</button>
+            </div>
+            <div class="stream-info">
+              <span class="badge">👁️ ${s.viewers}</span><span class="badge">🏷️ ${s.category}</span><span>⏱️ ${uptime}m</span>
+            </div>
+          </div>`;
       });
     }
 
-    // 2. UTILIDADES DE TIEMPO
     function updateTimeAndStats(elementId, startTime, viewers) {
-      const mins = Math.floor((Date.now() - startTime) / 60000);
-      document.getElementById(elementId).innerText = `⏱️ ${mins}m | 👁️ ${viewers}`;
+      document.getElementById(elementId).innerText = `⏱️ ${Math.floor((Date.now() - startTime) / 60000)}m | 👁️ ${viewers}`;
     }
 
-    // 3. INICIO DE STREAM (STREAMER)
+    // --- INICIAR STREAMER ---
     document.getElementById('btn-broadcast').onclick = async () => {
       let name = document.getElementById('username').value || 'Anónimo';
-      
-      // Prevenir duplicados
       if (currentStreamsData.find(s => s.username.toLowerCase() === name.toLowerCase())) {
         name = name + Math.floor(Math.random() * 1000);
-        alert(`Ese nombre ya existe. Te hemos asignado: ${name}`);
+        alert(`Ese nombre ya existe. Se te asignó: ${name}`);
         document.getElementById('username').value = name;
       }
-
-      const quality = document.getElementById('quality').value;
-      const format = document.getElementById('format').value;
       
+      document.getElementById('quality-select').value = document.getElementById('quality').value; // Sincroniza menú interno
+      const format = document.getElementById('format').value;
       if (format === 'horizontal') document.getElementById('streamer-wrapper').classList.add('horizontal');
 
-      await startMedia(currentFacingMode, quality);
+      await startMedia(currentFacingMode, document.getElementById('quality').value);
       
       document.getElementById('screen-setup').classList.add('hidden');
       document.getElementById('screen-streamer').classList.remove('hidden');
       
       streamStartTime = Date.now();
-      updateTimerInterval = setInterval(() => {
-        // Enviar cantidad de peers activos al servidor
+      setInterval(() => {
         const viewers = Object.keys(peerConnections).length;
         socket.emit('update-viewers', viewers);
         updateTimeAndStats('streamer-stats', streamStartTime, viewers);
-      }, 5000); // Actualiza stats cada 5 segundos
-
+      }, 5000);
       socket.emit('start-stream', { username: name, category: document.getElementById('category').value, format: format });
     };
 
-    async function startMedia(facingMode, res) {
+    // --- GESTIÓN CÁMARA & MICRÓFONO ---
+    async function startMedia(facingMode, res, audioDeviceId = null) {
       if (localStream) localStream.getTracks().forEach(t => t.stop());
       try {
-        // Optimizaciones WebRTC para evitar lag (24 fps y resolución controlada)
-        localStream = await navigator.mediaDevices.getUserMedia({ 
+        const constraints = { 
           video: { facingMode: facingMode, height: { ideal: parseInt(res) }, frameRate: { ideal: 24, max: 30 } }, 
-          audio: { echoCancellation: true, noiseSuppression: true } 
-        });
-        document.getElementById('local-video').srcObject = localStream;
-        updatePeersTracks();
-      } catch (e) { alert('Error cámara: ' + e.message); }
+          audio: audioDeviceId ? { deviceId: { exact: audioDeviceId }, echoCancellation: true, noiseSuppression: true } : { echoCancellation: true, noiseSuppression: true }
+        };
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        rawCamVideo.srcObject = localStream; // Se guarda para el Canvas
+        const videoTrack = isSharingScreen ? canvas.captureStream(30).getVideoTracks()[0] : localStream.getVideoTracks()[0];
+        
+        if (!isSharingScreen) document.getElementById('local-video').srcObject = localStream;
+        
+        // Sincronizar botones si estaban muteados
+        const btnMic = document.getElementById('ctrl-mic').classList.contains('off');
+        const btnCam = document.getElementById('ctrl-cam').classList.contains('off');
+        if (btnMic) localStream.getAudioTracks()[0].enabled = false;
+        if (btnCam) localStream.getVideoTracks()[0].enabled = false;
+
+        updatePeersTracks(videoTrack, localStream.getAudioTracks()[0]);
+      } catch (e) { alert('Error cámara/micro: ' + e.message); }
     }
 
-    function updatePeersTracks() {
+    function updatePeersTracks(videoTrack, audioTrack) {
       Object.values(peerConnections).forEach(pc => {
-        const vTrack = localStream.getVideoTracks()[0];
-        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
-        if (sender && vTrack) sender.replaceTrack(vTrack);
+        if (videoTrack) {
+          const vSender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+          if (vSender) vSender.replaceTrack(videoTrack);
+        }
+        if (audioTrack) {
+          const aSender = pc.getSenders().find(s => s.track && s.track.kind === 'audio');
+          if (aSender) aSender.replaceTrack(audioTrack);
+        }
       });
     }
 
-    // CONTROLES DEL STREAMER
-    document.getElementById('ctrl-mic').onclick = () => {
-      const track = localStream.getAudioTracks()[0];
-      if (track) { track.enabled = !track.enabled; document.getElementById('ctrl-mic').classList.toggle('off', !track.enabled); }
+    document.getElementById('ctrl-mic').onclick = (e) => {
+      const t = localStream.getAudioTracks()[0];
+      if (t) { t.enabled = !t.enabled; e.currentTarget.classList.toggle('off', !t.enabled); }
     };
     
-    document.getElementById('ctrl-cam').onclick = () => {
-      const track = localStream.getVideoTracks()[0];
-      if (track) { 
-        track.enabled = !track.enabled; 
-        document.getElementById('ctrl-cam').classList.toggle('off', !track.enabled); 
-        socket.emit('camera-status', { enabled: track.enabled });
+    document.getElementById('ctrl-cam').onclick = (e) => {
+      const t = localStream.getVideoTracks()[0];
+      if (t) { 
+        t.enabled = !t.enabled; 
+        e.currentTarget.classList.toggle('off', !t.enabled); 
+        socket.emit('camera-status', { enabled: t.enabled });
       }
     };
-
+    
     document.getElementById('ctrl-flip').onclick = () => {
       currentFacingMode = (currentFacingMode === 'user' ? 'environment' : 'user');
-      startMedia(currentFacingMode, document.getElementById('quality').value);
+      startMedia(currentFacingMode, document.getElementById('quality-select').value);
     };
 
+    // --- COMPARTIR PANTALLA + CANVAS MEZCLADOR ---
+    function changePip(pos) { pipPos = pos; }
+
+    function startCanvasMixer(format, heightRes) {
+      canvas.width = format === 'horizontal' ? Math.round(heightRes * (16/9)) : Math.round(heightRes * (9/16));
+      canvas.height = heightRes;
+
+      function render() {
+        if (!isSharingScreen) return;
+        
+        ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, canvas.width, canvas.height); // Fondo
+        
+        // Dibuja Pantalla
+        if (rawScreenVideo.readyState >= 2) {
+          const sRatio = rawScreenVideo.videoWidth / rawScreenVideo.videoHeight;
+          const cRatio = canvas.width / canvas.height;
+          let drawW = canvas.width, drawH = canvas.height, dx = 0, dy = 0;
+          if (sRatio > cRatio) { drawH = canvas.width / sRatio; dy = (canvas.height - drawH) / 2; } 
+          else { drawW = canvas.height * sRatio; dx = (canvas.width - drawW) / 2; }
+          ctx.drawImage(rawScreenVideo, dx, dy, drawW, drawH);
+        }
+        
+        // Dibuja Cámara (Solo si no está oculta y no está muteada)
+        if (pipPos !== 'hidden' && rawCamVideo.readyState >= 2 && localStream.getVideoTracks()[0].enabled) {
+          const pipW = canvas.width * 0.28;
+          const pipH = pipW * (rawCamVideo.videoHeight / rawCamVideo.videoWidth);
+          let x = 15, y = 15;
+          if (pipPos.includes('right')) x = canvas.width - pipW - 15;
+          if (pipPos.includes('bottom')) y = canvas.height - pipH - 15;
+          ctx.drawImage(rawCamVideo, x, y, pipW, pipH);
+          ctx.strokeStyle = '#ff4757'; ctx.lineWidth = 3; ctx.strokeRect(x, y, pipW, pipH);
+        }
+        renderLoop = requestAnimationFrame(render);
+      }
+      render();
+      return canvas.captureStream(30).getVideoTracks()[0];
+    }
+
     document.getElementById('ctrl-screen').onclick = async () => {
+      if (isSharingScreen) { stopScreenShare(); return; }
       try {
         screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        const screenTrack = screenStream.getVideoTracks()[0];
-        document.getElementById('local-video').srcObject = screenStream;
+        rawScreenVideo.srcObject = screenStream;
+        isSharingScreen = true;
         
-        Object.values(peerConnections).forEach(pc => {
-          const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
-          if (sender) sender.replaceTrack(screenTrack);
-        });
+        document.getElementById('ctrl-screen').classList.add('off');
+        document.getElementById('pip-controls').classList.remove('hidden');
 
-        screenTrack.onended = () => {
-          document.getElementById('local-video').srcObject = localStream;
-          updatePeersTracks();
-        };
+        const mixedVideoTrack = startCanvasMixer(document.getElementById('format').value, parseInt(document.getElementById('quality-select').value));
+        
+        document.getElementById('local-video').srcObject = canvas.captureStream(30);
+        updatePeersTracks(mixedVideoTrack, null);
+
+        screenStream.getVideoTracks()[0].onended = () => stopScreenShare();
       } catch(e) {}
     };
 
-    // 4. ESPECTADOR
+    function stopScreenShare() {
+      isSharingScreen = false;
+      cancelAnimationFrame(renderLoop);
+      if (screenStream) screenStream.getTracks().forEach(t => t.stop());
+      document.getElementById('ctrl-screen').classList.remove('off');
+      document.getElementById('pip-controls').classList.add('hidden');
+      document.getElementById('local-video').srcObject = localStream;
+      if(localStream) updatePeersTracks(localStream.getVideoTracks()[0], null);
+    }
+
+    // --- MODAL AJUSTES STREAMER ---
+    document.getElementById('btn-settings-streamer').onclick = async () => {
+      document.getElementById('modal-streamer').classList.remove('hidden');
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const sel = document.getElementById('mic-select'); const current = sel.value;
+      sel.innerHTML = '';
+      devices.filter(d => d.kind === 'audioinput').forEach((d, i) => {
+        sel.innerHTML += `<option value="${d.deviceId}">${d.label || 'Micro '+(i+1)}</option>`;
+      });
+      if(current) sel.value = current;
+    };
+    
+    document.getElementById('close-modal-streamer').onclick = async () => {
+      document.getElementById('modal-streamer').classList.add('hidden');
+      await startMedia(currentFacingMode, document.getElementById('quality-select').value, document.getElementById('mic-select').value);
+      if(isSharingScreen) {
+        const res = parseInt(document.getElementById('quality-select').value);
+        const format = document.getElementById('format').value;
+        canvas.width = format === 'horizontal' ? Math.round(res * (16/9)) : Math.round(res * (9/16));
+        canvas.height = res;
+      }
+    };
+
+    // --- ESPECTADOR ---
     function watchStream(targetId, username) {
       document.getElementById('screen-setup').classList.add('hidden');
       document.getElementById('screen-viewer').classList.remove('hidden');
@@ -325,25 +437,22 @@
       targetStreamerId = targetId;
 
       const streamData = currentStreamsData.find(s => s.id === targetId);
-      if (streamData && streamData.format === 'horizontal') {
-        document.getElementById('viewer-wrapper').classList.add('horizontal');
-      }
-
+      if (streamData && streamData.format === 'horizontal') document.getElementById('viewer-wrapper').classList.add('horizontal');
       socket.emit('signal', { to: targetId, signal: { type: 'viewer-ready' } });
     }
 
-    // Pantalla completa (Mantiene verticalidad nativa)
     document.getElementById('ctrl-fullscreen').onclick = () => {
-      const wrapper = document.getElementById('viewer-wrapper');
-      if (wrapper.requestFullscreen) wrapper.requestFullscreen();
-      else if (wrapper.webkitRequestFullscreen) wrapper.webkitRequestFullscreen();
+      const wr = document.getElementById('viewer-wrapper');
+      if (wr.requestFullscreen) wr.requestFullscreen(); else if (wr.webkitRequestFullscreen) wr.webkitRequestFullscreen();
     };
 
-    document.getElementById('remote-video').onplaying = () => {
-      document.getElementById('viewer-loader').style.display = 'none';
-    };
+    document.getElementById('remote-video').onplaying = () => document.getElementById('viewer-loader').style.display = 'none';
 
-    // Recibir estado de cámara apagada
+    // Ajustes Espectador
+    document.getElementById('btn-settings-viewer').onclick = () => document.getElementById('modal-viewer').classList.remove('hidden');
+    document.getElementById('close-modal-viewer').onclick = () => document.getElementById('modal-viewer').classList.add('hidden');
+    document.getElementById('volume-slider').oninput = (e) => document.getElementById('remote-video').volume = e.target.value;
+
     socket.on('peer-camera-status', (data) => {
       if (data.streamerId === targetStreamerId) {
         if (data.enabled) document.getElementById('cam-off-overlay').classList.add('hidden');
@@ -351,53 +460,38 @@
       }
     });
 
-    // 5. NÚCLEO WEBRTC
+    // --- NÚCLEO WEBRTC ---
     socket.on('signal', async (data) => {
       let pc = peerConnections[data.from];
       try {
         if (data.signal.type === 'viewer-ready') {
           pc = createPeerConnection(data.from);
-          if (localStream) localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+          const vTrack = isSharingScreen ? canvas.captureStream(30).getVideoTracks()[0] : localStream.getVideoTracks()[0];
+          if (localStream) { pc.addTrack(vTrack, localStream); pc.addTrack(localStream.getAudioTracks()[0], localStream); }
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
           socket.emit('signal', { to: data.from, signal: { type: 'offer', sdp: offer } });
-
         } else if (data.signal.type === 'offer') {
           pc = createPeerConnection(data.from);
           await pc.setRemoteDescription(new RTCSessionDescription(data.signal.sdp));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           socket.emit('signal', { to: data.from, signal: { type: 'answer', sdp: answer } });
-
         } else if (data.signal.type === 'answer') {
           await pc.setRemoteDescription(new RTCSessionDescription(data.signal.sdp));
-
         } else if (data.signal.candidate) {
           if (!pc) pc = createPeerConnection(data.from);
           await pc.addIceCandidate(new RTCIceCandidate(data.signal.candidate));
         }
-      } catch (err) { console.error("WebRTC Error:", err); }
+      } catch (err) {}
     });
 
     function createPeerConnection(targetId) {
       const pc = new RTCPeerConnection(config);
       peerConnections[targetId] = pc;
-
-      pc.onicecandidate = e => {
-        if (e.candidate) socket.emit('signal', { to: targetId, signal: { type: 'candidate', candidate: e.candidate } });
-      };
-
-      pc.ontrack = e => {
-        document.getElementById('remote-video').srcObject = e.streams[0];
-      };
-
-      // Limpiar conexiones si alguien se va
-      pc.oniceconnectionstatechange = () => {
-        if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-          delete peerConnections[targetId];
-        }
-      };
-
+      pc.onicecandidate = e => { if (e.candidate) socket.emit('signal', { to: targetId, signal: { type: 'candidate', candidate: e.candidate } }); };
+      pc.ontrack = e => document.getElementById('remote-video').srcObject = e.streams[0];
+      pc.oniceconnectionstatechange = () => { if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') delete peerConnections[targetId]; };
       return pc;
     }
   </script>
