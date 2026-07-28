@@ -1,444 +1,688 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PotatoLive — V4 Chat & Pro</title>
+  <title>SaltyVid</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    :root { --bg: #0b0c10; --card: #12141c; --card-inner: #1a1d28; --accent: #ff4757; --green: #2ed573; --text: #ffffff; --text-muted: #8e95a5; --border: #232736; }
+    /* VARIABLES (Azul Eléctrico + Temas) */
+    :root {
+      --primary: #0051ff; --primary-hover: #0042d1; --accent: #ff4757; --green: #2ed573;
+      --bg: #0f172a; --panel: #1e293b; --card: #0f172a; --text: #f8fafc; --text-muted: #94a3b8; --border: #334155;
+      --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    [data-theme="light"] {
+      --bg: #f8fafc; --panel: #ffffff; --card: #f1f5f9; --text: #0f172a; --text-muted: #64748b; --border: #e2e8f0;
+    }
+    
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 15px; min-height: 100vh; }
-    header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
-    .logo { font-size: 28px; background: var(--card-inner); padding: 6px 12px; border-radius: 14px; border: 1px solid var(--border); }
-    h1 { font-size: 24px; font-weight: 800; } h1 span { color: var(--accent); }
-    .card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 20px; width: 100%; max-width: 480px; margin-bottom: 15px; position: relative; }
-    .input-group { display: flex; gap: 8px; margin-bottom: 12px; }
-    input, select { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: white; font-size: 14px; }
-    button { padding: 12px; border-radius: 10px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s; }
-    .btn-red { background: var(--accent); color: white; width: 100%; } .btn-green { background: var(--green); color: #000; width: 100%; } .btn-dark { background: var(--card-inner); color: white; border: 1px solid var(--border); width: 100%; margin-top: 10px; } .btn-icon { background: var(--card-inner); color: white; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
-    .filters { display: flex; gap: 8px; margin-bottom: 15px; }
-    .stream-item { background: var(--card-inner); padding: 12px; border-radius: 12px; border: 1px solid var(--border); margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
-    .stream-header { display: flex; justify-content: space-between; align-items: center; }
-    .stream-info { font-size: 12px; color: var(--text-muted); display: flex; gap: 10px; } .badge { background: #232736; padding: 3px 8px; border-radius: 6px; color: white; }
+    body { background-color: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; transition: background-color var(--transition), color var(--transition); }
     
-    .video-wrapper { position: relative; width: 100%; aspect-ratio: 9/16; background: #050505; border-radius: 16px; overflow: hidden; margin-top: 10px; border: 2px solid var(--border); display: flex; justify-content: center; align-items: center; }
-    .video-wrapper.horizontal { aspect-ratio: 16/9; }
-    video { width: 100%; height: 100%; object-fit: contain; background: #000; }
-    .hidden { display: none !important; }
-    
-    .controls-bar { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: rgba(0,0,0,0.7); padding: 8px 14px; border-radius: 30px; backdrop-filter: blur(8px); z-index: 20; border: 1px solid rgba(255,255,255,0.1); }
-    .controls-bar button { width: 42px; height: 42px; border-radius: 50%; font-size: 18px; padding: 0; }
-    .controls-bar button.off { background: var(--accent); color: white; }
-    #pip-controls { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); padding: 6px 12px; border-radius: 12px; display: flex; gap: 8px; z-index: 30; border: 1px solid var(--border); }
-    #pip-controls button { width: 34px; height: 34px; border-radius: 8px; }
-    
-    .settings-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 50; border-radius: 18px; }
-    .settings-content { background: var(--card-inner); padding: 20px; border-radius: 16px; width: 90%; max-width: 320px; border: 1px solid var(--border); }
-    .status-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-    .live-stats { font-size: 13px; color: var(--text-muted); font-weight: bold; }
-    .cam-off-msg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 15; text-align: center; padding: 20px; }
-    .loader { width: 30px; height: 30px; border: 3px solid var(--border); border-top: 3px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; position: absolute; z-index: 10;}
-    @keyframes spin { 100% { transform: rotate(360deg); } }
+    /* ANIMACIÓN CASCADA */
+    .theme-waterfall { position: fixed; top: -100%; left: 0; width: 100%; height: 100%; background: var(--primary); z-index: 9999; pointer-events: none; }
+    .theme-waterfall.active { animation: fall 1.2s cubic-bezier(0.645, 0.045, 0.355, 1) forwards; }
+    @keyframes fall { 0% { top: -100%; border-bottom-left-radius: 50%; border-bottom-right-radius: 50%; } 40% { top: 0; border-radius: 0; } 60% { top: 0; border-radius: 0; } 100% { top: 100%; border-top-left-radius: 50%; border-top-right-radius: 50%; } }
 
-    /* CHAT CSS */
-    .chat-container { width: 100%; max-width: 480px; height: 280px; background: var(--card-inner); border-radius: 16px; border: 1px solid var(--border); margin-top: 15px; display: flex; flex-direction: column; overflow: hidden; }
-    .chat-messages { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
-    .chat-msg { background: var(--bg); padding: 8px 12px; border-radius: 10px; word-wrap: break-word; }
-    .chat-msg strong { color: var(--accent); }
-    .streamer-msg { cursor: pointer; border-left: 2px solid transparent; } .streamer-msg:hover { border-left: 2px solid var(--accent); }
-    .pinned-message { background: rgba(46, 213, 115, 0.15); border-bottom: 1px solid var(--green); padding: 10px; font-size: 12px; display: flex; gap: 8px; align-items: center; }
-    .chat-input-area { background: var(--card); padding: 10px; border-top: 1px solid var(--border); }
-    .emoji-bar { display: flex; gap: 12px; margin-bottom: 8px; font-size: 20px; cursor: pointer; justify-content: center; }
-    .chat-input-row { display: flex; gap: 8px; }
-    .chat-input-row input { margin: 0; }
+    /* MANTENIMIENTO */
+    #maintenance-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: #000; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10000; }
+    
+    /* DISPOSICIÓN PRINCIPAL */
+    .sidebar { width: 240px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: var(--transition); }
+    .sidebar-logo { padding: 20px; font-size: 24px; font-weight: 900; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+    .sidebar-logo span { color: var(--primary); }
+    .nav-item { padding: 15px 20px; display: flex; align-items: center; gap: 12px; font-size: 16px; color: var(--text-muted); cursor: pointer; border-left: 3px solid transparent; transition: var(--transition); }
+    .nav-item:hover { background: var(--card); color: var(--text); }
+    .nav-item.active { border-left-color: var(--primary); color: var(--primary); background: rgba(0, 81, 255, 0.1); }
+    
+    .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar { height: 70px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; justify-content: flex-end; align-items: center; padding: 0 20px; gap: 15px; }
+    
+    .view { flex: 1; overflow-y: auto; padding: 20px; display: none; }
+    .view.active { display: block; }
+
+    /* UI ELEMENTOS */
+    button { padding: 10px 16px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 14px; }
+    .btn-primary { background: var(--primary); color: white; } .btn-primary:hover { background: var(--primary-hover); }
+    .btn-danger { background: var(--accent); color: white; }
+    .btn-icon { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 8px; display:flex; align-items:center; justify-content:center; }
+    input, select, textarea { width: 100%; padding: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; color: var(--text); margin-bottom: 15px; }
+    
+    /* GRID STREAMS */
+    .streams-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+    .stream-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: 0.2s; }
+    .stream-card:hover { transform: translateY(-4px); border-color: var(--primary); }
+    .stream-thumb { width: 100%; aspect-ratio: 16/9; background: #000; position: relative; }
+    .stream-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .live-badge { position: absolute; top: 10px; left: 10px; background: var(--accent); color: white; font-size: 11px; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+    .stream-info-card { padding: 15px; }
+    .stream-title { font-weight: bold; font-size: 16px; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stream-meta { font-size: 13px; color: var(--text-muted); display: flex; gap: 10px; align-items: center; }
+
+    /* NOTICIAS */
+    .news-list { display: flex; flex-direction: column; gap: 20px; max-width: 800px; margin: 0 auto; }
+    .news-item { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .news-title { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+
+    /* MODALES */
+    .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display:flex; justify-content:center; align-items:center; z-index: 500; }
+    .modal-content { background: var(--panel); padding: 25px; border-radius: 16px; width: 90%; max-width: 400px; border: 1px solid var(--border); }
+    .hidden { display: none !important; }
+
+    /* STREAM UI COMPLETA */
+    .stream-layout { display: flex; height: 100%; gap: 15px; }
+    .video-section { flex: 1; display: flex; flex-direction: column; }
+    .video-wrapper { flex: 1; background: #000; border-radius: 12px; position: relative; overflow: hidden; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+    video { width: 100%; height: 100%; object-fit: contain; }
+    .cam-off-msg { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); color:white; display:flex; align-items:center; justify-content:center; font-weight:bold; z-index:15; }
+    .mic-off-icon { position: absolute; top:15px; right:15px; background: rgba(239, 68, 68, 0.9); color: white; padding: 8px; border-radius: 50%; z-index: 16; font-size: 18px; }
+    .controls-bar { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: rgba(0,0,0,0.7); padding: 8px 14px; border-radius: 30px; backdrop-filter: blur(8px); z-index: 20; }
+    .controls-bar button { border-radius: 50%; width: 40px; height: 40px; padding: 0; }
+    .controls-bar button.off { background: var(--accent); color: white; border: none; }
+    
+    /* PANEL LATERAL DERECHO (Chat & Puntos) */
+    .side-panel { width: 320px; background: var(--panel); border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+    .tabs { display: flex; border-bottom: 1px solid var(--border); }
+    .tab { flex: 1; text-align: center; padding: 12px; cursor: pointer; font-size: 14px; font-weight: bold; color: var(--text-muted); }
+    .tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+    
+    .tab-content { flex: 1; overflow-y: auto; padding: 12px; display: none; flex-direction: column; gap: 10px; }
+    .tab-content.active { display: flex; }
+    
+    /* Chat */
+    .chat-msg { font-size: 13px; word-wrap: break-word; padding: 6px; border-radius: 6px; }
+    .chat-msg strong { color: var(--primary); }
+    .chat-input-area { padding: 10px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+    .chat-input-area input { margin: 0; padding: 8px; }
+
+    /* Puntos & Apuestas */
+    .points-header { background: var(--card); padding: 15px; border-radius: 8px; text-align: center; border: 1px solid var(--primary); }
+    .points-header h2 { color: var(--primary); font-size: 24px; }
+    .action-card { background: var(--card); border: 1px solid var(--border); padding: 12px; border-radius: 8px; }
+    .rank-item { display: flex; justify-content: space-between; font-size: 13px; padding: 8px; border-bottom: 1px solid var(--border); }
   </style>
 </head>
 <body>
 
-  <header>
-    <div class="logo">🥔</div>
-    <h1>Potato<span>Live</span></h1>
-  </header>
+  <!-- Animación Tema -->
+  <div class="theme-waterfall" id="theme-fx"></div>
 
-  <!-- SETUP -->
-  <div id="screen-setup" class="card">
-    <div class="input-group">
-      <input type="text" id="username" placeholder="Tu nombre..." value="Pato">
-      <button class="btn-icon" id="btn-random-name" style="width: 50px;">🎲</button>
-    </div>
-    <div class="input-group">
-      <select id="category"><option>Charlando</option><option>Gaming</option><option>IRL</option><option>Música</option><option>Tecnología</option><option>Otros</option></select>
-      <select id="format"><option value="vertical">📱 Vertical</option><option value="horizontal">💻 Horizontal</option></select>
-    </div>
-    <select id="quality" style="margin-bottom: 15px;">
-      <option value="720">Calidad Max: 720p</option><option value="1080">Calidad Max: 1080p</option><option value="480">Calidad Max: 480p</option>
-    </select>
-    <button id="btn-broadcast" class="btn-red">📹 Iniciar Directo</button>
-
-    <div style="margin-top: 30px;">
-      <h3 style="font-size: 15px; margin-bottom: 10px;">🔴 Explorar Canales</h3>
-      <div class="filters">
-        <input type="text" id="search-bar" placeholder="Buscar canal..." onkeyup="renderStreamList()">
-        <select id="sort-select" onchange="renderStreamList()" style="width: 140px;">
-          <option value="viewers">🔥 Top Viewers</option><option value="recent">🕒 Recientes</option><option value="alpha">A-Z</option>
-        </select>
-      </div>
-      <div id="stream-list"><p style="font-size: 13px; color: var(--text-muted);">Buscando transmisiones...</p></div>
-    </div>
+  <!-- Mantenimiento -->
+  <div id="maintenance-overlay" class="hidden">
+    <h1>🛠️ Página en mantenimiento</h1>
+    <p>Volveremos enseguida. Disculpa las molestias.</p>
   </div>
 
-  <!-- STREAMER -->
-  <div id="screen-streamer" class="card hidden" style="margin-bottom: 0;">
-    <div class="status-bar">
-      <h3>🔴 En Directo</h3>
-      <div class="live-stats" id="streamer-stats">⏱️ 00:00 | 👁️ 0</div>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo" id="logo-trigger">🥔 Salty<span>Vid</span></div>
+    <div class="nav-item active" onclick="nav('home')">🏠 Inicio</div>
+    <div class="nav-item" onclick="nav('explore')">🧭 Explorar</div>
+    <div class="nav-item" onclick="nav('news')">📰 Noticias</div>
+    <div class="nav-item hidden" id="nav-admin" onclick="nav('admin')">⚙️ Panel Admin</div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <header class="topbar">
+      <button class="btn-icon" onclick="toggleTheme()" title="Cambiar Tema">🌓</button>
+      <button class="btn-icon" onclick="openModal('modal-settings')" title="Ajustes Generales">⚙️</button>
+      <button class="btn-primary" onclick="openModal('modal-golive')">🔴 Hacer Directo</button>
+    </header>
+
+    <!-- VISTA: INICIO -->
+    <div id="view-home" class="view active">
+      <h2 style="margin-bottom: 20px;">Canales en Directo</h2>
+      <div class="streams-grid" id="streams-grid">
+        <!-- Generado por JS -->
+      </div>
     </div>
-    <div class="video-wrapper" id="streamer-wrapper">
-      <div id="pip-controls" class="hidden">
-        <button class="btn-icon" onclick="changePip('top-left')">↖️</button><button class="btn-icon" onclick="changePip('top-right')">↗️</button>
-        <button class="btn-icon" onclick="changePip('bottom-left')">↙️</button><button class="btn-icon" onclick="changePip('bottom-right')">↘️</button>
-        <button class="btn-icon" onclick="changePip('hidden')" style="color: var(--accent);">❌</button>
+
+    <!-- VISTA: EXPLORAR -->
+    <div id="view-explore" class="view">
+      <h2 style="margin-bottom: 20px;">Explorar (Próximamente)</h2>
+      <p style="color: var(--text-muted);">Aquí aparecerán canales recomendados.</p>
+    </div>
+
+    <!-- VISTA: NOTICIAS -->
+    <div id="view-news" class="view">
+      <h2 style="margin-bottom: 20px;">Últimas Noticias</h2>
+      <div class="news-list" id="news-container"></div>
+    </div>
+
+    <!-- VISTA: ADMIN -->
+    <div id="view-admin" class="view">
+      <h2 style="color: var(--accent); margin-bottom: 20px;">Panel de Control (Top Secret)</h2>
+      
+      <div class="action-card" style="margin-bottom: 20px;">
+        <h3>Estado del Servidor</h3>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 10px;">Si activas esto, todos los directos se cortarán.</p>
+        <button id="btn-toggle-maint" class="btn-danger">Activar Mantenimiento</button>
       </div>
-      <video id="local-video" autoplay playsinline muted></video>
-      <div class="controls-bar">
-        <button id="ctrl-mic" class="btn-icon">🎤</button>
-        <button id="ctrl-cam" class="btn-icon">📹</button>
-        <button id="ctrl-screen" class="btn-icon">💻</button>
-        <button id="ctrl-flip" class="btn-icon">🔄</button>
-        <button id="btn-settings-streamer" class="btn-icon">⚙️</button>
-      </div>
-      <!-- Ajustes Streamer -->
-      <div id="modal-streamer" class="settings-modal hidden">
-        <div class="settings-content">
-          <h4>⚙️ Ajustes en Directo</h4>
-          <label style="font-size: 12px; color: var(--text-muted); margin-top:10px;">Micrófono:</label>
-          <select id="mic-select" style="margin-bottom: 10px;"></select>
-          <label style="font-size: 12px; color: var(--text-muted);">Modo Lento (Chat):</label>
-          <select id="slow-mode-select" style="margin-bottom: 10px;">
-            <option value="0">Desactivado</option><option value="5">5 segundos</option><option value="10">10 segundos</option><option value="30">30 segundos</option>
+
+      <div class="action-card">
+        <h3>Publicar Noticia</h3>
+        <input type="text" id="admin-news-title" placeholder="Título de la noticia">
+        <textarea id="admin-news-content" rows="4" placeholder="Contenido (Punto 1... Punto 2...)"></textarea>
+        <div style="display: flex; gap: 10px;">
+          <input type="text" id="admin-news-img" placeholder="URL de Imagen (Opcional)">
+          <select id="admin-news-color">
+            <option value="#0051ff">Azul Eléctrico</option>
+            <option value="#ff4757">Rojo Fuego</option>
+            <option value="#2ed573">Verde Éxito</option>
+            <option value="#eab308">Amarillo Oro</option>
+            <option value="#a855f7">Morado</option>
           </select>
-          <button id="close-modal-streamer" class="btn-green">Guardar Ajustes</button>
-          <button onclick="location.reload()" style="background:#ff4757; color:white; width:100%; border:none; padding:12px; border-radius:10px; margin-top:20px; font-weight:bold;">🛑 Finalizar Directo</button>
+        </div>
+        <button class="btn-primary" onclick="publishNews()">Publicar Noticia</button>
+      </div>
+    </div>
+
+    <!-- VISTA: STREAM (Reproductor + Paneles) -->
+    <div id="view-stream" class="view" style="padding: 15px;">
+      <div class="stream-layout">
+        <!-- VÍDEO -->
+        <div class="video-section">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <div>
+              <h2 id="current-stream-title">Título del Directo</h2>
+              <span style="color: var(--primary); font-weight: bold;" id="current-stream-user">Usuario</span>
+            </div>
+            <div style="text-align: right;">
+              <div class="live-stats" id="stream-stats">⏱️ 0m | 👁️ 0 | ❤️ 0</div>
+              <button id="btn-like" class="btn-icon" style="margin-top:5px; margin-left:auto; color:var(--accent);">❤️ Dar Like</button>
+            </div>
+          </div>
+          
+          <div class="video-wrapper" id="main-video-wrapper">
+            <div class="cam-off-msg hidden" id="cam-off-overlay">🚫 Cámara pausada</div>
+            <div class="mic-off-icon hidden" id="mic-off-overlay">🔇</div>
+            <video id="main-video" autoplay playsinline></video>
+            
+            <div class="controls-bar">
+              <!-- Botones Streamer -->
+              <button id="ctrl-mic" class="btn-icon hidden streamer-only">🎤</button>
+              <button id="ctrl-cam" class="btn-icon hidden streamer-only">📹</button>
+              <button id="ctrl-screen" class="btn-icon hidden streamer-only">💻</button>
+              <button id="ctrl-settings" class="btn-icon hidden streamer-only" onclick="openModal('modal-streamer-settings')">⚙️</button>
+              <!-- Botones Espectador -->
+              <button id="ctrl-full" class="btn-icon viewer-only" onclick="toggleFull()">🔲</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL DERECHO -->
+        <div class="side-panel">
+          <div class="tabs">
+            <div class="tab active" onclick="switchTab('chat')">Chat</div>
+            <div class="tab" onclick="switchTab('points')">Puntos & Apuestas</div>
+            <div class="tab" onclick="switchTab('rank')">Ranking</div>
+          </div>
+          
+          <!-- TAB: CHAT -->
+          <div id="tab-chat" class="tab-content active">
+            <div id="chat-messages" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:5px;"></div>
+            <div class="chat-input-area">
+              <input type="text" id="chat-input" placeholder="Escribe aquí...">
+              <button class="btn-primary" onclick="sendChat()">Enviar</button>
+            </div>
+          </div>
+
+          <!-- TAB: PUNTOS Y APUESTAS -->
+          <div id="tab-points" class="tab-content">
+            <div class="points-header">
+              <p style="font-size: 12px; color: var(--text-muted);">Tus Puntos</p>
+              <h2 id="my-points">0 🪙</h2>
+            </div>
+            
+            <!-- Zona Espectador -->
+            <div id="viewer-actions" class="viewer-only">
+              <h4 style="margin: 10px 0; color: var(--primary);">Apuesta Activa</h4>
+              <div id="active-prediction-ui" class="action-card hidden">
+                <p id="pred-q" style="font-weight:bold; margin-bottom:10px;"></p>
+                <div style="display:flex; gap:10px; margin-bottom: 10px;">
+                  <button class="btn-primary" style="flex:1" onclick="votePrediction('yes')">Sí</button>
+                  <button class="btn-danger" style="flex:1" onclick="votePrediction('no')">No</button>
+                </div>
+                <input type="number" id="pred-amount" placeholder="Puntos a apostar" min="10">
+              </div>
+              <p id="no-pred-msg" style="font-size: 13px; color: var(--text-muted);">No hay apuestas activas.</p>
+
+              <h4 style="margin: 10px 0; color: var(--primary);">Recompensas</h4>
+              <div id="rewards-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+            </div>
+
+            <!-- Zona Streamer -->
+            <div id="streamer-actions" class="streamer-only hidden">
+              <div class="action-card">
+                <h4>Crear Apuesta</h4>
+                <input type="text" id="streamer-pred-q" placeholder="Ej: ¿Gano esta partida?">
+                <button class="btn-primary" style="width:100%" onclick="startPrediction()">Iniciar Apuesta</button>
+                <div id="pred-resolve-ui" class="hidden" style="margin-top:10px; display:flex; gap:10px;">
+                  <button class="btn-primary" style="flex:1" onclick="resolvePrediction('yes')">Ganó SÍ</button>
+                  <button class="btn-danger" style="flex:1" onclick="resolvePrediction('no')">Ganó NO</button>
+                </div>
+              </div>
+              <div class="action-card" style="margin-top: 10px;">
+                <h4>Crear Recompensa</h4>
+                <input type="text" id="reward-action" placeholder="Ej: Haz 10 flexiones">
+                <input type="number" id="reward-cost" placeholder="Coste en 🪙">
+                <button class="btn-primary" style="width:100%" onclick="createReward()">Añadir</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: RANKING -->
+          <div id="tab-rank" class="tab-content">
+            <h3 style="margin-bottom: 10px; color: var(--primary);">Top Espectadores</h3>
+            <div id="ranking-list" style="display: flex; flex-direction: column; gap: 5px;"></div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  </main>
 
-  <!-- ESPECTADOR -->
-  <div id="screen-viewer" class="card hidden" style="margin-bottom: 0;">
-    <div class="status-bar">
-      <h3 id="viewer-title">👀 Viendo directo</h3>
-      <div class="live-stats" id="viewer-stats">⏱️ 00:00 | 👁️ 0</div>
-    </div>
-    <div class="video-wrapper" id="viewer-wrapper">
-      <div class="loader" id="viewer-loader"></div>
-      <div class="cam-off-msg hidden" id="cam-off-overlay">🚫 El streamer ha pausado la cámara</div>
-      <video id="remote-video" autoplay playsinline></video>
-      <div class="controls-bar">
-        <button id="ctrl-fullscreen" class="btn-icon">🔲</button>
-        <button id="btn-settings-viewer" class="btn-icon">⚙️</button>
+  <!-- MODAL: GO LIVE -->
+  <div id="modal-golive" class="modal-overlay hidden">
+    <div class="modal-content">
+      <h2 style="margin-bottom: 15px; color: var(--primary);">Configurar Directo</h2>
+      <input type="text" id="setup-title" placeholder="Título pegadizo...">
+      <input type="text" id="setup-user" placeholder="Tu nombre...">
+      <select id="setup-category"><option>Charlando</option><option>Gaming</option><option>IRL</option><option>Música</option></select>
+      <div style="display: flex; gap: 10px;">
+        <select id="setup-format"><option value="horizontal">💻 Horizontal</option><option value="vertical">📱 Vertical</option></select>
+        <select id="setup-fps"><option value="30">30 FPS</option><option value="60">60 FPS</option></select>
       </div>
-      <!-- Ajustes Espectador -->
-      <div id="modal-viewer" class="settings-modal hidden">
-        <div class="settings-content">
-          <h4>⚙️ Ajustes Individuales</h4>
-          <label style="font-size: 12px; color: var(--text-muted); margin-top:10px;">Calidad de vídeo:</label>
-          <!-- El espectador solo ve hasta 1080, pero el código limitará si el streamer emite a menos -->
-          <select id="viewer-quality-select" style="margin-bottom: 10px;">
-            <option value="720" selected>Auto / Normal (720p)</option>
-            <option value="480">Ahorro de Datos (480p)</option>
-            <option value="1080">Máxima Posible (1080p)</option>
-          </select>
-          <label style="font-size: 12px; color: var(--text-muted);">Volumen:</label>
-          <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1" style="width: 100%; margin-bottom: 20px;">
-          <button id="close-modal-viewer" class="btn-green">Aplicar</button>
-        </div>
+      <select id="setup-quality" style="margin-bottom: 20px;"><option value="1080">1080p</option><option value="720" selected>720p</option><option value="480">480p</option></select>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn-icon" style="flex:1" onclick="closeModal('modal-golive')">Cancelar</button>
+        <button class="btn-primary" style="flex:2" onclick="startStream()">¡En Directo!</button>
       </div>
     </div>
   </div>
 
-  <!-- CHAT GLOBAL (Aparece abajo del vídeo al entrar) -->
-  <div id="chat-module" class="chat-container hidden">
-    <div id="pinned-message" class="pinned-message hidden"></div>
-    <div id="chat-messages" class="chat-messages"></div>
-    <div class="chat-input-area">
-      <div class="emoji-bar">
-        <span onclick="addEmoji('😀')">😀</span><span onclick="addEmoji('😂')">😂</span><span onclick="addEmoji('❤️')">❤️</span>
-        <span onclick="addEmoji('🔥')">🔥</span><span onclick="addEmoji('🥔')">🥔</span><span onclick="addEmoji('👀')">👀</span>
-      </div>
-      <div class="chat-input-row">
-        <input type="text" id="chat-input" placeholder="Enviar mensaje...">
-        <button class="btn-red" id="btn-send-chat" style="width: 80px; padding: 12px;">Enviar</button>
+  <!-- MODAL: AJUSTES GENERALES (Top Right) -->
+  <div id="modal-settings" class="modal-overlay hidden">
+    <div class="modal-content">
+      <h2>Ajustes</h2>
+      <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 15px;">Ajustes de tu cuenta local.</p>
+      <button class="btn-icon" style="width:100%; margin-bottom:10px;" onclick="toggleTheme()">Cambiar Tema Oscuro/Claro</button>
+      <button class="btn-primary" style="width:100%;" onclick="closeModal('modal-settings')">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- MODAL: AJUSTES STREAMER (Durante directo) -->
+  <div id="modal-streamer-settings" class="modal-overlay hidden">
+    <div class="modal-content">
+      <h2>⚙️ Ajustes en Directo</h2>
+      <label style="font-size: 12px; color: var(--text-muted);">Calidad de Emisión:</label>
+      <select id="live-quality"><option value="1080">1080p</option><option value="720">720p</option><option value="480">480p</option></select>
+      <label style="font-size: 12px; color: var(--text-muted);">Modo Lento (Chat):</label>
+      <select id="live-slow"><option value="0">Off</option><option value="5">5s</option><option value="10">10s</option></select>
+      
+      <div style="display: flex; gap:10px; margin-top:20px;">
+        <button class="btn-primary" style="flex:1" onclick="applyStreamerSettings()">Guardar</button>
+        <button class="btn-danger" style="flex:1" onclick="location.reload()">🛑 Finalizar</button>
       </div>
     </div>
   </div>
 
   <script>
     const socket = io();
-    let localStream, screenStream;
+    
+    // --- ESTADO GLOBAL ---
+    let myId = null;
+    let isStreamer = false;
+    let targetStreamerId = null;
+    let localStream = null;
     let peerConnections = {};
-    let currentFacingMode = 'user', currentStreamsData = [];
-    let streamStartTime = null, targetStreamerId = null, myUsername = "";
-    
-    // WebRTC + Mezclador variables
-    let isSharingScreen = false, isStreamer = false, pipPos = 'bottom-right';
-    let renderLoop; const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
-    const rawCamVideo = document.createElement('video'); rawCamVideo.muted = true; rawCamVideo.autoplay = true; rawCamVideo.playsInline = true;
-    const rawScreenVideo = document.createElement('video'); rawScreenVideo.muted = true; rawScreenVideo.autoplay = true; rawScreenVideo.playsInline = true;
-    
-    // Chat variables
-    let slowModeWait = 0, lastMessageTime = 0;
     const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+    
+    // --- NAVEGACIÓN Y UI BÁSICA ---
+    function nav(viewId) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('view-' + viewId).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+    
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-    // --- SETUP Y LISTA ---
-    const adj = ["Pro", "Ninja", "Live", "Boss", "Max"]; const noun = ["Potato", "Pato", "Lobo", "Oso"];
-    document.getElementById('btn-random-name').onclick = () => document.getElementById('username').value = noun[Math.floor(Math.random()*noun.length)] + adj[Math.floor(Math.random()*adj.length)] + Math.floor(Math.random()*99);
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+      document.getElementById('tab-' + tabId).classList.add('active');
+    }
 
-    socket.on('update-stream-list', (streams) => {
-      currentStreamsData = streams;
-      renderStreamList();
-      if (targetStreamerId) {
-        const s = streams.find(x => x.id === targetStreamerId);
-        if (s) {
-          document.getElementById('viewer-stats').innerText = `⏱️ ${Math.floor((Date.now() - s.startTime)/60000)}m | 👁️ ${s.viewers}`;
-        } else {
-          alert('El directo ha terminado'); location.reload();
-        }
+    // --- TEMA & CASCADA ---
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      
+      const fx = document.getElementById('theme-fx');
+      fx.classList.add('active');
+      
+      setTimeout(() => { html.setAttribute('data-theme', next); }, 500); // Cambia colores a mitad de cascada
+      setTimeout(() => { fx.classList.remove('active'); }, 1200); // Reset cascada
+    }
+
+    // --- SECRETO ADMIN ---
+    let logoTaps = 0;
+    let logoTimer;
+    document.getElementById('logo-trigger').onclick = () => {
+      logoTaps++;
+      clearTimeout(logoTimer);
+      if (logoTaps >= 3) {
+        logoTaps = 0;
+        const pass = prompt("Acceso Restringido. Contraseña:");
+        if (pass) socket.emit('admin-login', pass);
+      }
+      logoTimer = setTimeout(() => logoTaps = 0, 1500);
+    };
+
+    socket.on('admin-auth-success', () => {
+      alert("Autenticación Admin completada.");
+      document.getElementById('nav-admin').classList.remove('hidden');
+    });
+
+    // --- MANTENIMIENTO ---
+    document.getElementById('btn-toggle-maint').onclick = () => {
+      const btn = document.getElementById('btn-toggle-maint');
+      const newState = btn.innerText.includes('Activar');
+      socket.emit('toggle-maintenance', newState);
+      btn.innerText = newState ? 'Desactivar Mantenimiento' : 'Activar Mantenimiento';
+      btn.className = newState ? 'btn-primary' : 'btn-danger';
+    };
+
+    socket.on('maintenance-update', (state) => {
+      if (state && !document.getElementById('nav-admin').classList.contains('hidden') === false) {
+        document.getElementById('maintenance-overlay').classList.remove('hidden');
+        if (localStream) location.reload(); // Expulsar si estabas en stream
+      } else {
+        document.getElementById('maintenance-overlay').classList.add('hidden');
       }
     });
 
-    function renderStreamList() {
-      const list = document.getElementById('stream-list');
-      const search = document.getElementById('search-bar').value.toLowerCase();
-      const sort = document.getElementById('sort-select').value;
-      list.innerHTML = '';
-      let filtered = currentStreamsData.filter(s => s.id !== socket.id && s.username.toLowerCase().includes(search));
-      if (sort === 'viewers') filtered.sort((a,b) => b.viewers - a.viewers);
-      else if (sort === 'recent') filtered.sort((a,b) => b.startTime - a.startTime);
-      else if (sort === 'alpha') filtered.sort((a,b) => a.username.localeCompare(b.username));
-      if (filtered.length === 0) return list.innerHTML = '<p style="font-size: 13px; color: var(--text-muted);">No hay canales activos.</p>';
+    // --- NOTICIAS ---
+    function publishNews() {
+      const news = {
+        title: document.getElementById('admin-news-title').value,
+        content: document.getElementById('admin-news-content').value,
+        img: document.getElementById('admin-news-img').value,
+        color: document.getElementById('admin-news-color').value,
+        date: new Date().toLocaleDateString()
+      };
+      socket.emit('save-news', news);
+      alert("Publicada");
+    }
 
-      filtered.forEach(s => {
-        list.innerHTML += `
-          <div class="stream-item">
-            <div class="stream-header"><strong>🔴 ${s.username}</strong><button class="btn-green" style="width: auto; padding: 6px 12px;" onclick="watchStream('${s.id}', '${s.username}')">VER</button></div>
-            <div class="stream-info"><span class="badge">👁️ ${s.viewers}</span><span class="badge">🏷️ ${s.category}</span><span>⏱️ ${Math.floor((Date.now() - s.startTime)/60000)}m</span></div>
-          </div>`;
+    socket.on('news-update', (list) => {
+      const container = document.getElementById('news-container');
+      container.innerHTML = '';
+      list.forEach(n => {
+        let contentHtml = n.content.split('\n').map(p => `<p style="margin-bottom:8px; color:var(--text-muted);">${p}</p>`).join('');
+        let imgHtml = n.img ? `<img src="${n.img}" style="width:100%; border-radius:8px; margin-bottom:15px; max-height:200px; object-fit:cover;">` : '';
+        container.innerHTML += `
+          <div class="news-item">
+            ${imgHtml}
+            <h3 class="news-title" style="color: ${n.color};">${n.title}</h3>
+            <span style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:10px;">${n.date}</span>
+            <div>${contentHtml}</div>
+          </div>
+        `;
+      });
+    });
+
+    // --- INICIALIZACIÓN DATOS SERVER ---
+    socket.on('initial-state', (data) => {
+      myId = socket.id;
+      renderStreams(data.streams);
+      socket.emit('news-update', data.news); // Reutiliza función
+      if(data.maintenance && !document.getElementById('nav-admin').classList.contains('hidden') === false) {
+         document.getElementById('maintenance-overlay').classList.remove('hidden');
+      }
+    });
+
+    socket.on('update-stream-list', (streams) => renderStreams(streams));
+
+    function renderStreams(streams) {
+      const grid = document.getElementById('streams-grid');
+      grid.innerHTML = '';
+      const activeStreams = streams.filter(s => s.id !== socket.id);
+      
+      if(activeStreams.length === 0) {
+        grid.innerHTML = '<p style="color:var(--text-muted)">No hay nadie en directo.</p>'; return;
+      }
+
+      activeStreams.forEach(s => {
+        const thumbStr = s.thumbnail ? `<img src="${s.thumbnail}">` : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:var(--border);">Sin Vista Previa</div>`;
+        grid.innerHTML += `
+          <div class="stream-card" onclick="joinStream('${s.id}', '${s.title}', '${s.username}')">
+            <div class="stream-thumb">
+              <div class="live-badge">EN DIRECTO</div>
+              ${thumbStr}
+            </div>
+            <div class="stream-info-card">
+              <div class="stream-title">${s.title}</div>
+              <div class="stream-meta">
+                <span>👤 ${s.username}</span>
+                <span style="margin-left:auto; color:var(--primary); font-weight:bold;">👁️ ${s.viewers}</span>
+              </div>
+            </div>
+          </div>
+        `;
       });
     }
 
-    // --- STREAMER ---
-    document.getElementById('btn-broadcast').onclick = async () => {
-      myUsername = document.getElementById('username').value || 'Anónimo';
-      if (currentStreamsData.find(s => s.username.toLowerCase() === myUsername.toLowerCase())) {
-        myUsername += Math.floor(Math.random() * 1000);
-        document.getElementById('username').value = myUsername;
-      }
-      
-      const format = document.getElementById('format').value;
-      if (format === 'horizontal') document.getElementById('streamer-wrapper').classList.add('horizontal');
-      
-      await startMedia(currentFacingMode, document.getElementById('quality').value);
-      
-      document.getElementById('screen-setup').classList.add('hidden');
-      document.getElementById('screen-streamer').classList.remove('hidden');
-      document.getElementById('chat-module').classList.remove('hidden');
-      
-      isStreamer = true; targetStreamerId = socket.id; streamStartTime = Date.now();
-      setInterval(() => {
-        const viewers = Object.keys(peerConnections).length;
-        socket.emit('update-viewers', viewers);
-        document.getElementById('streamer-stats').innerText = `⏱️ ${Math.floor((Date.now() - streamStartTime)/60000)}m | 👁️ ${viewers}`;
-      }, 5000);
-      socket.emit('start-stream', { username: myUsername, category: document.getElementById('category').value, format: format });
-    };
+    // --- LÓGICA STREAMER ---
+    let thumbnailInterval;
+    async function startStream() {
+      const title = document.getElementById('setup-title').value || 'Mi Directo Épico';
+      const username = document.getElementById('setup-user').value || 'Streamer';
+      const cat = document.getElementById('setup-category').value;
+      const format = document.getElementById('setup-format').value;
+      const fps = document.getElementById('setup-fps').value;
+      const qual = document.getElementById('setup-quality').value;
 
-    async function startMedia(facingMode, res, audioDeviceId = null) {
-      if (localStream) localStream.getTracks().forEach(t => t.stop());
+      closeModal('modal-golive');
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById('view-stream').classList.add('active');
+
+      document.getElementById('current-stream-title').innerText = title;
+      document.getElementById('current-stream-user').innerText = username;
+      
+      // Mostrar controles de streamer
+      document.querySelectorAll('.streamer-only').forEach(el => el.classList.remove('hidden'));
+      document.querySelectorAll('.viewer-only').forEach(el => el.classList.add('hidden'));
+      
+      isStreamer = true; targetStreamerId = socket.id;
+
       try {
-        localStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: facingMode, height: { ideal: parseInt(res) }, frameRate: { ideal: 24, max: 30 } }, 
-          audio: audioDeviceId ? { deviceId: { exact: audioDeviceId }, echoCancellation: true } : { echoCancellation: true }
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: { height: { ideal: parseInt(qual) }, frameRate: { ideal: parseInt(fps) } },
+          audio: true
         });
-        rawCamVideo.srcObject = localStream;
-        const videoTrack = isSharingScreen ? canvas.captureStream(30).getVideoTracks()[0] : localStream.getVideoTracks()[0];
-        if (!isSharingScreen) document.getElementById('local-video').srcObject = localStream;
+        document.getElementById('main-video').srcObject = localStream;
+        document.getElementById('main-video').muted = true; // No escucharse a sí mismo
         
-        // Restaurar estado de mute
-        if (document.getElementById('ctrl-mic').classList.contains('off')) localStream.getAudioTracks()[0].enabled = false;
-        if (document.getElementById('ctrl-cam').classList.contains('off')) localStream.getVideoTracks()[0].enabled = false;
+        socket.emit('start-stream', { title, username, category: cat, format, fps });
         
-        Object.values(peerConnections).forEach(pc => {
-          const vS = pc.getSenders().find(s => s.track && s.track.kind === 'video'); if (vS) vS.replaceTrack(videoTrack);
-          const aS = pc.getSenders().find(s => s.track && s.track.kind === 'audio'); if (aS) aS.replaceTrack(localStream.getAudioTracks()[0]);
-        });
-      } catch (e) { alert('Error cámara: ' + e.message); }
+        // Loop Thumnail (cada 60s)
+        thumbnailInterval = setInterval(sendThumbnail, 60000);
+        
+        // Actualizar views stats
+        setInterval(() => {
+          const v = Object.keys(peerConnections).length;
+          socket.emit('update-viewers', v);
+        }, 5000);
+
+      } catch (e) { alert("Error cámara: " + e.message); }
     }
 
+    function sendThumbnail() {
+      if(!localStream || !localStream.getVideoTracks()[0].enabled) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = 320; canvas.height = 180;
+      canvas.getContext('2d').drawImage(document.getElementById('main-video'), 0, 0, 320, 180);
+      socket.emit('update-thumbnail', canvas.toDataURL('image/jpeg', 0.5));
+    }
+
+    // Controles A/V Streamer
     document.getElementById('ctrl-mic').onclick = (e) => {
       const t = localStream.getAudioTracks()[0];
-      if (t) { t.enabled = !t.enabled; e.currentTarget.classList.toggle('off', !t.enabled); }
+      if (t) { 
+        t.enabled = !t.enabled; 
+        e.currentTarget.classList.toggle('off', !t.enabled);
+        socket.emit('mic-status', { enabled: t.enabled });
+      }
     };
     
     document.getElementById('ctrl-cam').onclick = (e) => {
       const t = localStream.getVideoTracks()[0];
       if (t) { 
         t.enabled = !t.enabled; 
-        e.currentTarget.classList.toggle('off', !t.enabled); 
-        // FIX: Si está compartiendo pantalla NO avisa que se cortó la cámara principal
-        socket.emit('camera-status', { enabled: t.enabled || isSharingScreen });
+        e.currentTarget.classList.toggle('off', !t.enabled);
+        socket.emit('camera-status', { enabled: t.enabled });
       }
-    };
-    
-    document.getElementById('ctrl-flip').onclick = () => {
-      currentFacingMode = (currentFacingMode === 'user' ? 'environment' : 'user');
-      startMedia(currentFacingMode, document.getElementById('quality').value);
     };
 
-    // --- COMPARTIR PANTALLA ---
-    function changePip(pos) { pipPos = pos; }
-    function startCanvasMixer(format, heightRes) {
-      canvas.width = format === 'horizontal' ? Math.round(heightRes * (16/9)) : Math.round(heightRes * (9/16));
-      canvas.height = heightRes;
-      function render() {
-        if (!isSharingScreen) return;
-        ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        if (rawScreenVideo.readyState >= 2) {
-          const sRatio = rawScreenVideo.videoWidth / rawScreenVideo.videoHeight;
-          const cRatio = canvas.width / canvas.height;
-          let drawW = canvas.width, drawH = canvas.height, dx = 0, dy = 0;
-          if (sRatio > cRatio) { drawH = canvas.width / sRatio; dy = (canvas.height - drawH) / 2; } else { drawW = canvas.height * sRatio; dx = (canvas.width - drawW) / 2; }
-          ctx.drawImage(rawScreenVideo, dx, dy, drawW, drawH);
-        }
-        if (pipPos !== 'hidden' && rawCamVideo.readyState >= 2 && localStream.getVideoTracks()[0].enabled) {
-          const pipW = canvas.width * 0.28; const pipH = pipW * (rawCamVideo.videoHeight / rawCamVideo.videoWidth);
-          let x = 15, y = 15;
-          if (pipPos.includes('right')) x = canvas.width - pipW - 15;
-          if (pipPos.includes('bottom')) y = canvas.height - pipH - 15;
-          ctx.drawImage(rawCamVideo, x, y, pipW, pipH); ctx.strokeStyle = '#ff4757'; ctx.lineWidth = 3; ctx.strokeRect(x, y, pipW, pipH);
-        }
-        renderLoop = requestAnimationFrame(render);
-      }
-      render(); return canvas.captureStream(30).getVideoTracks()[0];
+    function applyStreamerSettings() {
+      // Aplicar calidad re-pidiendo stream (simplificado para demo)
+      closeModal('modal-streamer-settings');
+      socket.emit('set-slow-mode', { seconds: parseInt(document.getElementById('live-slow').value) });
     }
 
-    document.getElementById('ctrl-screen').onclick = async () => {
-      if (isSharingScreen) {
-        isSharingScreen = false; cancelAnimationFrame(renderLoop);
-        if (screenStream) screenStream.getTracks().forEach(t => t.stop());
-        document.getElementById('ctrl-screen').classList.remove('off');
-        document.getElementById('pip-controls').classList.add('hidden');
-        document.getElementById('local-video').srcObject = localStream;
-        Object.values(peerConnections).forEach(pc => { const vS = pc.getSenders().find(s => s.track && s.track.kind === 'video'); if (vS) vS.replaceTrack(localStream.getVideoTracks()[0]); });
-        // Emitir estado real de la cámara al quitar pantalla
-        socket.emit('camera-status', { enabled: localStream.getVideoTracks()[0].enabled });
-      } else {
-        try {
-          screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-          rawScreenVideo.srcObject = screenStream; isSharingScreen = true;
-          document.getElementById('ctrl-screen').classList.add('off'); document.getElementById('pip-controls').classList.remove('hidden');
-          const mixedTrack = startCanvasMixer(document.getElementById('format').value, parseInt(document.getElementById('quality').value));
-          document.getElementById('local-video').srcObject = canvas.captureStream(30);
-          Object.values(peerConnections).forEach(pc => { const vS = pc.getSenders().find(s => s.track && s.track.kind === 'video'); if (vS) vS.replaceTrack(mixedTrack); });
-          socket.emit('camera-status', { enabled: true }); // Al compartir pantalla forzamos activo
-          screenStream.getVideoTracks()[0].onended = () => document.getElementById('ctrl-screen').click();
-        } catch(e) {}
-      }
-    };
-
-    // --- AJUSTES STREAMER ---
-    document.getElementById('btn-settings-streamer').onclick = async () => {
-      document.getElementById('modal-streamer').classList.remove('hidden');
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const sel = document.getElementById('mic-select'); sel.innerHTML = '';
-      devices.filter(d => d.kind === 'audioinput').forEach((d, i) => { sel.innerHTML += `<option value="${d.deviceId}">${d.label || 'Micro '+(i+1)}</option>`; });
-    };
-    document.getElementById('close-modal-streamer').onclick = () => {
-      document.getElementById('modal-streamer').classList.add('hidden');
-      socket.emit('set-slow-mode', { seconds: parseInt(document.getElementById('slow-mode-select').value) });
-      startMedia(currentFacingMode, document.getElementById('quality').value, document.getElementById('mic-select').value);
-    };
-
-    // --- ESPECTADOR ---
-    function watchStream(targetId, username) {
-      myUsername = document.getElementById('username').value || 'Espectador' + Math.floor(Math.random()*999);
-      document.getElementById('screen-setup').classList.add('hidden');
-      document.getElementById('screen-viewer').classList.remove('hidden');
-      document.getElementById('chat-module').classList.remove('hidden');
-      document.getElementById('viewer-title').innerText = `👀 Viendo a ${username}`;
-      targetStreamerId = targetId;
-
-      const streamData = currentStreamsData.find(s => s.id === targetId);
-      if (streamData && streamData.format === 'horizontal') document.getElementById('viewer-wrapper').classList.add('horizontal');
+    // --- LÓGICA ESPECTADOR ---
+    let watchPointsInterval;
+    function joinStream(id, title, user) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById('view-stream').classList.add('active');
       
-      socket.emit('join-stream', targetId);
-      socket.emit('signal', { to: targetId, signal: { type: 'viewer-ready' } });
+      document.getElementById('current-stream-title').innerText = title;
+      document.getElementById('current-stream-user').innerText = user;
+      
+      document.querySelectorAll('.streamer-only').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.viewer-only').forEach(el => el.classList.remove('hidden'));
+      
+      targetStreamerId = id;
+      const myUsername = "User" + Math.floor(Math.random()*999);
+      socket.emit('join-stream', id, myUsername);
+      socket.emit('signal', { to: id, signal: { type: 'viewer-ready' } });
+
+      watchPointsInterval = setInterval(() => { socket.emit('claim-watch-points', targetStreamerId); }, 60000);
     }
 
-    document.getElementById('ctrl-fullscreen').onclick = () => {
-      const wr = document.getElementById('viewer-wrapper');
-      if (wr.requestFullscreen) wr.requestFullscreen(); else if (wr.webkitRequestFullscreen) wr.webkitRequestFullscreen();
-    };
-    document.getElementById('remote-video').onplaying = () => document.getElementById('viewer-loader').style.display = 'none';
+    function toggleFull() {
+      const w = document.getElementById('main-video-wrapper');
+      if (w.requestFullscreen) w.requestFullscreen();
+    }
 
-    // Ajustes Espectador (Calidad Individual WebRTC)
-    document.getElementById('btn-settings-viewer').onclick = () => document.getElementById('modal-viewer').classList.remove('hidden');
-    document.getElementById('close-modal-viewer').onclick = () => {
-      document.getElementById('modal-viewer').classList.add('hidden');
-      // Enviar señal al streamer para que degrade solo MI señal
-      socket.emit('signal', { to: targetStreamerId, signal: { type: 'set-peer-quality', res: parseInt(document.getElementById('viewer-quality-select').value) } });
-    };
-    document.getElementById('volume-slider').oninput = (e) => document.getElementById('remote-video').volume = e.target.value;
+    document.getElementById('btn-like').onclick = () => { socket.emit('add-like', targetStreamerId); };
+    socket.on('update-likes', (likes) => { 
+      const txt = document.getElementById('stream-stats').innerText;
+      document.getElementById('stream-stats').innerText = txt.replace(/❤️ \d+/, `❤️ ${likes}`);
+    });
 
+    // Avisos de A/V remotos
     socket.on('peer-camera-status', (data) => {
-      if (data.streamerId === targetStreamerId) {
-        if (data.enabled) document.getElementById('cam-off-overlay').classList.add('hidden');
+      if(data.streamerId === targetStreamerId) {
+        if(data.enabled) document.getElementById('cam-off-overlay').classList.add('hidden');
         else document.getElementById('cam-off-overlay').classList.remove('hidden');
       }
     });
-
-    // --- CHAT SYSTEM ---
-    function addEmoji(e) { document.getElementById('chat-input').value += e; }
-    
-    document.getElementById('btn-send-chat').onclick = () => {
-      const text = document.getElementById('chat-input').value.trim();
-      if (!text) return;
-      if (!isStreamer && slowModeWait > 0 && Date.now() - lastMessageTime < slowModeWait * 1000) {
-        alert(`Modo lento activado. Espera ${slowModeWait} segundos.`); return;
+    socket.on('peer-mic-status', (data) => {
+      if(data.streamerId === targetStreamerId) {
+        if(data.enabled) document.getElementById('mic-off-overlay').classList.add('hidden');
+        else document.getElementById('mic-off-overlay').classList.remove('hidden');
       }
-      lastMessageTime = Date.now();
-      socket.emit('chat-message', { streamerId: targetStreamerId, username: myUsername, text: text });
-      document.getElementById('chat-input').value = '';
-    };
+    });
 
+    // --- SISTEMA DE PUNTOS & CHAT ---
+    socket.on('points-update', (pts) => { document.getElementById('my-points').innerText = `${pts} 🪙`; });
+    socket.on('ranking-update', (rankList) => {
+      const box = document.getElementById('ranking-list'); box.innerHTML = '';
+      rankList.forEach((r, i) => {
+        box.innerHTML += `<div class="rank-item"><span>#${i+1} ${r.username}</span><span style="color:var(--primary); font-weight:bold;">${r.points} 🪙</span></div>`;
+      });
+    });
+
+    function sendChat() {
+      const input = document.getElementById('chat-input');
+      if(input.value.trim() === '') return;
+      socket.emit('chat-message', { streamerId: targetStreamerId, username: isStreamer ? 'STREAMER' : 'Yo', text: input.value });
+      input.value = '';
+    }
+    
     socket.on('chat-message', (data) => {
       const box = document.getElementById('chat-messages');
-      const msg = document.createElement('div'); msg.className = `chat-msg ${isStreamer ? 'streamer-msg' : ''}`;
-      msg.innerHTML = `<strong>${data.username}:</strong> ${data.text}`;
-      if (isStreamer) {
-        msg.title = "Clic para fijar";
-        msg.onclick = () => { if(confirm('¿Fijar este mensaje?')) socket.emit('pin-message', { streamerId: targetStreamerId, username: data.username, text: data.text }); };
+      box.innerHTML += `<div class="chat-msg"><strong>${data.username}:</strong> ${data.text}</div>`;
+      box.scrollTop = box.scrollHeight;
+    });
+
+    // --- RECOMPENSAS & APUESTAS ---
+    function createReward() {
+      const act = document.getElementById('reward-action').value;
+      const cost = document.getElementById('reward-cost').value;
+      if(act && cost) socket.emit('create-reward', { action: act, cost: parseInt(cost) });
+    }
+
+    socket.on('rewards-update', (list) => {
+      const box = document.getElementById('rewards-list'); box.innerHTML = '';
+      list.forEach(r => {
+        box.innerHTML += `
+          <div class="action-card" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>${r.action}</span>
+            <button class="btn-primary" style="padding: 6px 10px;" onclick="socket.emit('redeem-reward', { streamerId: targetStreamerId, rewardId: '${r.id}' })">${r.cost} 🪙</button>
+          </div>
+        `;
+      });
+    });
+
+    socket.on('reward-redeemed', (data) => {
+      alert(`🎉 ALERTA STREAMER: ${data.username} ha canjeado "${data.action}"`);
+    });
+
+    function startPrediction() {
+      const q = document.getElementById('streamer-pred-q').value;
+      if(q) {
+        socket.emit('start-prediction', { question: q });
+        document.getElementById('pred-resolve-ui').classList.remove('hidden');
       }
-      box.appendChild(msg); box.scrollTop = box.scrollHeight;
+    }
+    
+    function resolvePrediction(opt) {
+      socket.emit('resolve-prediction', opt);
+      document.getElementById('pred-resolve-ui').classList.add('hidden');
+    }
+
+    socket.on('prediction-started', (data) => {
+      if(!isStreamer) {
+        document.getElementById('active-prediction-ui').classList.remove('hidden');
+        document.getElementById('no-pred-msg').classList.add('hidden');
+        document.getElementById('pred-q').innerText = data.question;
+      }
     });
 
-    socket.on('pin-message', (data) => {
-      const pin = document.getElementById('pinned-message');
-      pin.innerHTML = `📌 <strong>${data.username}:</strong> ${data.text}`;
-      pin.classList.remove('hidden');
+    function votePrediction(opt) {
+      const amt = parseInt(document.getElementById('pred-amount').value);
+      if(amt > 0) socket.emit('vote-prediction', { streamerId: targetStreamerId, option: opt, amount: amt });
+    }
+
+    socket.on('prediction-ended', () => {
+      document.getElementById('active-prediction-ui').classList.add('hidden');
+      document.getElementById('no-pred-msg').classList.remove('hidden');
     });
 
-    socket.on('slow-mode-changed', (sec) => { slowModeWait = sec; });
-
-    // --- WEBRTC CORE ---
+    // --- NÚCLEO WEBRTC ---
     socket.on('signal', async (data) => {
       let pc = peerConnections[data.from];
       try {
         if (data.signal.type === 'viewer-ready') {
           pc = createPeerConnection(data.from);
-          const vTrack = isSharingScreen ? canvas.captureStream(30).getVideoTracks()[0] : localStream.getVideoTracks()[0];
-          if (localStream) { pc.addTrack(vTrack, localStream); pc.addTrack(localStream.getAudioTracks()[0], localStream); }
+          if (localStream) { pc.addTrack(localStream.getVideoTracks()[0], localStream); pc.addTrack(localStream.getAudioTracks()[0], localStream); }
           const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
           socket.emit('signal', { to: data.from, signal: { type: 'offer', sdp: offer } });
         } 
@@ -455,22 +699,6 @@
           if (!pc) pc = createPeerConnection(data.from);
           await pc.addIceCandidate(new RTCIceCandidate(data.signal.candidate));
         }
-        else if (data.signal.type === 'set-peer-quality') {
-          // El streamer recibe la orden de un espectador para bajar SU calidad específica
-          if (pc && pc.getSenders) {
-            const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
-            if (sender) {
-              const params = sender.getParameters();
-              if (!params.encodings) params.encodings = [{}];
-              const reqRes = data.signal.res;
-              const currentRes = parseInt(document.getElementById('quality').value);
-              let scale = currentRes / reqRes;
-              if (scale < 1) scale = 1; // Nunca enviar más resolución de la que tiene la cámara origen
-              params.encodings[0].scaleResolutionDownBy = scale;
-              sender.setParameters(params);
-            }
-          }
-        }
       } catch (err) {}
     });
 
@@ -478,7 +706,7 @@
       const pc = new RTCPeerConnection(config);
       peerConnections[targetId] = pc;
       pc.onicecandidate = e => { if (e.candidate) socket.emit('signal', { to: targetId, signal: { type: 'candidate', candidate: e.candidate } }); };
-      pc.ontrack = e => document.getElementById('remote-video').srcObject = e.streams[0];
+      pc.ontrack = e => { document.getElementById('main-video').srcObject = e.streams[0]; };
       pc.oniceconnectionstatechange = () => { if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') delete peerConnections[targetId]; };
       return pc;
     }
